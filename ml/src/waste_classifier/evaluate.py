@@ -28,8 +28,8 @@ import torch
 from sklearn.metrics import classification_report, confusion_matrix
 from torch.utils.data import DataLoader
 
-from waste_classifier.data import WasteDataset, eval_transform
-from waste_classifier.model import load_checkpoint
+from waste_classifier.data import WasteDataset, eval_transform, file_sha256
+from waste_classifier.model import load_checkpoint, state_dict_sha256
 from waste_classifier.train import get_device, load_cfg
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -155,6 +155,8 @@ def run_evaluation(
         "split": "test",
         "model": ckpt["model_name"],
         "checkpoint_epoch": ckpt["epoch"],
+        "checkpoint_weights_sha256": state_dict_sha256(model.state_dict()),
+        "test_csv_sha256": file_sha256(root / cfg["data"]["splits_dir"] / "test.csv"),
         "n_samples": len(y_true),
         "accuracy": round(acc, 4),
         "macro_f1": round(macro_f1, 4),

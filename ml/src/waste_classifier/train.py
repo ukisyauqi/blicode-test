@@ -10,8 +10,12 @@ Pemakaian (dari folder ml/):
 from __future__ import annotations
 
 import csv
+import json
 import random
+import shutil
+import subprocess  # nosec B404 - hanya dipakai untuk perintah git dengan argumen tetap
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Self
 
@@ -23,8 +27,14 @@ from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from waste_classifier.data import WasteDataset, eval_transform, train_transform
-from waste_classifier.model import build_model, freeze_backbone, set_train_mode, unfreeze_all
+from waste_classifier.data import WasteDataset, eval_transform, split_fingerprint, train_transform
+from waste_classifier.model import (
+    build_model,
+    freeze_backbone,
+    set_train_mode,
+    state_dict_sha256,
+    unfreeze_all,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 LOG_FIELDS = ["stage", "epoch", "train_loss", "val_loss", "val_acc", "val_macro_f1", "seconds"]
@@ -56,6 +66,49 @@ def class_weights(labels: list[int], n_classes: int) -> torch.Tensor:
         raise ValueError(f"Ada kelas tanpa contoh training: {counts.tolist()}")
     w = counts.sum() / (n_classes * counts)
     return torch.tensor(w / w.mean(), dtype=torch.float32)
+
+
+def git_info(root: Path) -> dict:
+    """Commit dan daftar file yang belum ter-commit. Nilai None bila bukan repo git."""
+
+    git = shutil.which("git")
+    if git is None:
+        return {"commit": None, "dirty": None, "changed_files": []}
+
+    def run(*args: str) -> str | None:
+        try:
+            # Argumen tetap dan tanpa shell, jadi tidak ada input eksternal yang dijalankan.
+            out = subprocess.run(  # nosec B603
+                [git, "-C", str(root), *args],
+                capture_output=True, text=True, check=True,
+            )
+        except (OSError, subprocess.CalledProcessError):
+            return None
+        return out.stdout.strip()
+
+    commit = run("rev-parse", "HEAD")
+    status = run("status", "--porcelain") or ""
+    changed = [line[3:] for line in status.splitlines()]
+    return {
+        "commit": commit,
+        "dirty": (len(changed) > 0) if commit is not None else None,
+        "changed_files": changed,
+    }
+
+
+def build_meta(cfg: dict, root: Path) -> dict:
+    """Metadata yang dicatat di checkpoint: waktu, commit, versi library, dataset, dan config."""
+    import torchvision
+
+    return {
+        "created_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "git": git_info(root),
+        # str(...) penting: versi bertipe TorchVersion yang ditolak torch.load(weights_only=True)
+        "versions": {"torch": str(torch.__version__), "torchvision": str(torchvision.__version__)},
+        "dataset": split_fingerprint(root / cfg["data"]["splits_dir"]),
+        "seed": cfg["seed"],
+        "config": cfg,
+    }
 
 
 class EpochLog:
@@ -155,18 +208,26 @@ def run_stage(
             state["best_f1"] = val_f1
             state["best_epoch"] = f"{name}:{epoch}"
             bad_epochs = 0
+            sd = model.state_dict()
+            meta = {
+                **state["meta"],
+                "weights_sha256": state_dict_sha256(sd),
+                "best_epoch": f"{name}:{epoch}",
+            }
             torch.save(
                 {
-                    "state_dict": model.state_dict(),
+                    "state_dict": sd,
                     "model_name": state["model_name"],
                     "classes": state["classes"],
                     "image_size": state["image_size"],
                     "val_macro_f1": val_f1,
                     "val_acc": val_acc,
                     "epoch": f"{name}:{epoch}",
+                    "meta": meta,
                 },
                 state["ckpt_path"],
             )
+            state["best_meta"] = meta
             print(f"  -> model terbaik disimpan (val_macro_f1 {val_f1:.4f})")
         else:
             bad_epochs += 1
@@ -226,6 +287,8 @@ def train(cfg: dict, root: Path = ROOT) -> dict:
         "classes": classes,
         "image_size": image_size,
         "ckpt_path": out_dir / "best.pt",
+        "meta": build_meta(cfg, root),
+        "best_meta": None,
     }
 
     with EpochLog(reports / "train_log.csv") as log:
@@ -248,6 +311,10 @@ def train(cfg: dict, root: Path = ROOT) -> dict:
             "finetune", model, t["epochs_finetune"], t["lr_finetune"], t["weight_decay"],
             criterion, train_loader, val_loader, device, t["early_stopping_patience"],
             state, log, frozen_backbone=False,
+        )
+    if state["best_meta"] is not None:
+        (reports / "train_meta.json").write_text(
+            json.dumps(state["best_meta"], indent=2, ensure_ascii=False)
         )
     return state
 

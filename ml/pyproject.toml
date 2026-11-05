@@ -18,14 +18,27 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "httpx2>=2.16.0",
     "pytest>=8.3",
     "ruff>=0.6",
+]
+export = [
+    "onnx>=1.23.2",
+    "onnxruntime>=1.31.1",
+    "onnxscript>=0.7.2",
+]
+api = [
+    "fastapi>=0.162.0",
+    "python-multipart>=0.0.33",
+    "uvicorn>=0.54.0",
 ]
 
 [project.scripts]
 waste-train = "waste_classifier.train:main"
 waste-predict = "waste_classifier.predict:main"
 waste-evaluate = "waste_classifier.evaluate:main"
+waste-export = "waste_classifier.export:main"
+waste-api = "waste_classifier.api:main"
 
 [build-system]
 requires = ["hatchling"]

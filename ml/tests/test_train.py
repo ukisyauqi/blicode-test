@@ -1,5 +1,6 @@
 """Test pipeline training: logging, bobot kelas, dan satu siklus training kecil end-to-end."""
 
+import json
 import sys
 from pathlib import Path
 
@@ -9,7 +10,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from waste_classifier.model import load_checkpoint
+from waste_classifier.model import load_checkpoint, state_dict_sha256
 from waste_classifier.train import LOG_FIELDS, EpochLog, class_weights, train
 
 CLASSES = ["organic", "plastic", "paper"]
@@ -88,3 +89,11 @@ def test_train_runs_end_to_end_on_tiny_dataset(tmp_path):
     # header + 1 epoch tahap head + 1 epoch tahap finetune
     log_lines = (tmp_path / "reports" / "train_log.csv").read_text().splitlines()
     assert len(log_lines) == 3
+
+    meta = ckpt["meta"]
+    assert meta["weights_sha256"] == state_dict_sha256(ckpt["state_dict"])
+    assert meta["dataset"]["rows"] == {"train": 12, "val": 6}
+    assert meta["seed"] == 42 and meta["config"]["seed"] == 42
+    assert {"created_at", "git", "versions"} <= meta.keys()
+    best_json = json.loads((tmp_path / "reports" / "train_meta.json").read_text())
+    assert best_json["weights_sha256"] == meta["weights_sha256"]

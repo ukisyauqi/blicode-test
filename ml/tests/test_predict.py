@@ -23,6 +23,7 @@ def _make_checkpoint(path: Path) -> None:
             "model_name": "mobilenet_v3_large",
             "classes": CLASSES,
             "image_size": 224,
+            "epoch": "head:1",
         },
         path,
     )

@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 import torch
+from PIL import Image
 
 from waste_classifier.data import eval_transform, load_image
 from waste_classifier.model import load_checkpoint
@@ -20,30 +21,41 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CKPT = ROOT / "models" / "best.pt"
 
 
-@torch.no_grad()
+class Predictor:
+    """Muat checkpoint sekali, lalu pakai berulang. Dipakai oleh CLI dan API."""
+
+    def __init__(self, checkpoint: str | Path = DEFAULT_CKPT, device: str = "cpu") -> None:
+        self.model, ckpt = load_checkpoint(str(checkpoint), device)
+        self.classes: list[str] = ckpt["classes"]
+        self.model_name: str = ckpt["model_name"]
+        self.epoch: str = str(ckpt.get("epoch", "tidak diketahui"))  # checkpoint lama mungkin tanpa ini
+        self.device = device
+        self.tfm = eval_transform(ckpt["image_size"])
+
+    @torch.inference_mode()
+    def predict_image(self, img: Image.Image) -> dict:
+        """Prediksi untuk gambar RGB yang sudah lewat to_rgb (rotasi EXIF sudah diterapkan)."""
+        x = self.tfm(img).unsqueeze(0).to(self.device)
+        probs = torch.softmax(self.model(x), dim=1)[0].cpu()
+        idx = int(probs.argmax())
+        return {
+            "label": self.classes[idx],
+            "confidence": float(probs[idx]),
+            "probabilities": {c: float(probs[i]) for i, c in enumerate(self.classes)},
+        }
+
+
 def predict_paths(
     paths: list[str | Path],
     checkpoint: str | Path = DEFAULT_CKPT,
     device: str = "cpu",
 ) -> list[dict]:
     """Kembalikan label dan probabilitas per kelas untuk setiap gambar."""
-    model, ckpt = load_checkpoint(str(checkpoint), device)
-    classes: list[str] = ckpt["classes"]
-    tfm = eval_transform(ckpt["image_size"])
-
+    predictor = Predictor(checkpoint, device)
     results = []
     for p in paths:
-        x = tfm(load_image(Path(p).resolve())).unsqueeze(0).to(device)
-        probs = torch.softmax(model(x), dim=1)[0].cpu()
-        idx = int(probs.argmax())
-        results.append(
-            {
-                "path": str(p),
-                "label": classes[idx],
-                "confidence": float(probs[idx]),
-                "probabilities": {c: float(probs[i]) for i, c in enumerate(classes)},
-            }
-        )
+        result = predictor.predict_image(load_image(Path(p).resolve()))
+        results.append({"path": str(p), **result})
     return results
 
 

@@ -1,0 +1,85 @@
+{
+  "backfilled": true,
+  "backfill_note": "Metadata ditambahkan setelah training. Bobot dicek identik per tensor dengan checkpoint asli (backup: models/best_pre_meta.pt). Kode training ada di commit 93e66ac61666c48730bac2a6805e395bc0a81e8b. Setelah itu train.py, model.py, dan data.py hanya menambah fungsi metadata; logika training tidak berubah.",
+  "best_saved_at_approx": "2026-11-05T09:30:53+07:00",
+  "training_log_last_write_approx": "2026-11-05T09:35:29+07:00",
+  "git": {
+    "commit": "93e66ac61666c48730bac2a6805e395bc0a81e8b",
+    "dirty": false,
+    "changed_files": []
+  },
+  "versions": {
+    "torch": "2.15.0",
+    "torchvision": "0.29.2"
+  },
+  "dataset": {
+    "files_sha256": {
+      "train": "e3980abad5894beb940b20a1893f36c1499eb76aae763769b8074bbf63348910",
+      "val": "7b354ba87e268b881e9975ced7a13e63d44441a2b2ba051f0e01ab78f80d898a",
+      "test": "970d81205769c269d2c51a58ea3c7521f55fdc6844c6067cd7ec11892e397d28"
+    },
+    "rows": {
+      "train": 147,
+      "val": 31,
+      "test": 32
+    },
+    "per_class": {
+      "train": {
+        "organic": 49,
+        "paper": 49,
+        "plastic": 49
+      },
+      "val": {
+        "organic": 11,
+        "paper": 10,
+        "plastic": 10
+      },
+      "test": {
+        "organic": 10,
+        "paper": 11,
+        "plastic": 11
+      }
+    }
+  },
+  "seed": 42,
+  "config": {
+    "seed": 42,
+    "data": {
+      "raw_dir": "data/raw",
+      "processed_dir": "data/processed",
+      "splits_dir": "data/splits",
+      "classes": [
+        "organic",
+        "plastic",
+        "paper"
+      ],
+      "image_size": 224,
+      "val_ratio": 0.15,
+      "test_ratio": 0.15,
+      "max_per_class": 70
+    },
+    "model": {
+      "name": "mobilenet_v3_large",
+      "pretrained": true,
+      "dropout": 0.2
+    },
+    "train": {
+      "epochs_head": 5,
+      "epochs_finetune": 15,
+      "batch_size": 32,
+      "num_workers": 4,
+      "lr_head": 0.001,
+      "lr_finetune": 0.0001,
+      "weight_decay": 0.0001,
+      "label_smoothing": 0.1,
+      "early_stopping_patience": 5,
+      "device": "auto"
+    },
+    "output": {
+      "checkpoint_dir": "models",
+      "reports_dir": "reports"
+    }
+  },
+  "weights_sha256": "b0093828be12e3405c1c95a3bfeecbd3ab42ef0a8b93e95e4e0515911c6feabf",
+  "best_epoch": "head:2"
+}

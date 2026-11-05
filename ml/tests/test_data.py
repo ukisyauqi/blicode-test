@@ -9,7 +9,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from waste_classifier.data import eval_transform, label_to_idx, load_image
+from waste_classifier.data import eval_transform, label_to_idx, load_image, split_fingerprint
 
 
 def test_label_to_idx_is_stable():
@@ -42,3 +42,11 @@ def test_load_image_applies_exif_orientation(tmp_path):
     exif[0x0112] = 6  # Orientation 6: piksel harus diputar 90 derajat agar tampil tegak
     Image.new("RGB", (40, 20), color=(0, 0, 255)).save(p, exif=exif.tobytes())
     assert load_image(p).size == (20, 40)
+
+
+def test_split_fingerprint_counts_rows_and_classes(tmp_path):
+    (tmp_path / "train.csv").write_text("path,label\na.jpg,organic\nb.jpg,plastic\nc.jpg,organic\n")
+    fp = split_fingerprint(tmp_path, names=("train", "val"))  # val tidak ada, dilewati
+    assert fp["rows"] == {"train": 3}
+    assert fp["per_class"]["train"] == {"organic": 2, "plastic": 1}
+    assert len(fp["files_sha256"]["train"]) == 64

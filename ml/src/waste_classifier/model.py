@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+
 import torch
 from torch import nn
 from torchvision.models import (
@@ -77,3 +79,14 @@ def load_checkpoint(path: str, device: torch.device | str = "cpu") -> tuple[nn.M
     model.load_state_dict(ckpt["state_dict"])
     model.eval().to(device)
     return model, ckpt
+
+
+def state_dict_sha256(state_dict: dict) -> str:
+    """Hash deterministik dari bobot (key diurutkan). Dipakai untuk melacak bobot yang dievaluasi."""
+    h = hashlib.sha256()
+    for key in sorted(state_dict):
+        t = state_dict[key].detach().cpu().contiguous()
+        h.update(key.encode())
+        h.update(str((tuple(t.shape), str(t.dtype))).encode())
+        h.update(t.numpy().tobytes())
+    return h.hexdigest()

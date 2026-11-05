@@ -14,6 +14,7 @@ from waste_classifier.model import (
     freeze_backbone,
     load_checkpoint,
     set_train_mode,
+    state_dict_sha256,
     unfreeze_all,
 )
 
@@ -96,3 +97,14 @@ def test_checkpoint_roundtrip_matches_outputs(tmp_path):
     x = torch.randn(2, 3, 224, 224)
     with torch.no_grad():
         assert torch.allclose(model(x), loaded(x), atol=1e-6)
+
+
+def test_state_dict_hash_is_stable_and_detects_weight_change():
+    model = build_model("mobilenet_v3_large", 3, pretrained=False)
+    sd = model.state_dict()
+    h = state_dict_sha256(sd)
+    assert h == state_dict_sha256(model.state_dict())
+    changed = {k: v.clone() for k, v in sd.items()}
+    key = next(k for k, v in changed.items() if v.is_floating_point())
+    changed[key] = changed[key] + 1.0
+    assert state_dict_sha256(changed) != h

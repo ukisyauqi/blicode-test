@@ -1,0 +1,291 @@
+{
+  "onnx_sha256": "7e8bef1fb82e8c6377fc678f7040f857651c29ff79a8e9783f815e5b029bdb1b",
+  "weights_sha256": "b0093828be12e3405c1c95a3bfeecbd3ab42ef0a8b93e95e4e0515911c6feabf",
+  "classes": [
+    "organic",
+    "plastic",
+    "paper"
+  ],
+  "image_size": 224,
+  "images": [
+    {
+      "path": "data/raw/organic/train_organic waste (117).png",
+      "label": "organic",
+      "probabilities": [
+        0.9210256934165955,
+        0.06832998245954514,
+        0.010644379071891308
+      ]
+    },
+    {
+      "path": "data/raw/organic/train_organic waste (132).jpg",
+      "label": "organic",
+      "probabilities": [
+        0.965210497379303,
+        0.028063280507922173,
+        0.006726127117872238
+      ]
+    },
+    {
+      "path": "data/raw/organic/train_organic waste (137).png",
+      "label": "organic",
+      "probabilities": [
+        0.33982083201408386,
+        0.5664885640144348,
+        0.09369058161973953
+      ]
+    },
+    {
+      "path": "data/raw/organic/train_organic waste (161).jpg",
+      "label": "organic",
+      "probabilities": [
+        0.9103298783302307,
+        0.0700732171535492,
+        0.019596947357058525
+      ]
+    },
+    {
+      "path": "data/raw/organic/train_organic waste (189).jpg",
+      "label": "organic",
+      "probabilities": [
+        0.9903765320777893,
+        0.006060485262423754,
+        0.0035629384219646454
+      ]
+    },
+    {
+      "path": "data/raw/organic/train_organic waste (205).png",
+      "label": "organic",
+      "probabilities": [
+        0.8160030841827393,
+        0.14640259742736816,
+        0.0375942662358284
+      ]
+    },
+    {
+      "path": "data/raw/organic/train_organic waste (212).jpg",
+      "label": "organic",
+      "probabilities": [
+        0.9833309054374695,
+        0.012299949303269386,
+        0.004369121510535479
+      ]
+    },
+    {
+      "path": "data/raw/organic/train_organic waste (266).png",
+      "label": "organic",
+      "probabilities": [
+        0.5298770666122437,
+        0.4121950566768646,
+        0.05792788788676262
+      ]
+    },
+    {
+      "path": "data/raw/organic/train_organic waste (306).jpg",
+      "label": "organic",
+      "probabilities": [
+        0.9863650798797607,
+        0.01006253995001316,
+        0.0035722614265978336
+      ]
+    },
+    {
+      "path": "data/raw/organic/train_organic waste (319).jpg",
+      "label": "organic",
+      "probabilities": [
+        0.30298906564712524,
+        0.6618667244911194,
+        0.03514427691698074
+      ]
+    },
+    {
+      "path": "data/raw/organic/train_organic waste (34).jpg",
+      "label": "organic",
+      "probabilities": [
+        0.9887582063674927,
+        0.007656855508685112,
+        0.0035848410334438086
+      ]
+    },
+    {
+      "path": "data/raw/paper/test_paper waste (121).jpg",
+      "label": "paper",
+      "probabilities": [
+        0.03708009794354439,
+        0.32742762565612793,
+        0.6354922652244568
+      ]
+    },
+    {
+      "path": "data/raw/paper/train_paper waste (10).png",
+      "label": "paper",
+      "probabilities": [
+        0.04545946791768074,
+        0.20064125955104828,
+        0.7538992166519165
+      ]
+    },
+    {
+      "path": "data/raw/paper/train_paper waste (1561).jpg",
+      "label": "paper",
+      "probabilities": [
+        0.04441980645060539,
+        0.08357710391283035,
+        0.8720031380653381
+      ]
+    },
+    {
+      "path": "data/raw/paper/train_paper waste (1579).jpg",
+      "label": "paper",
+      "probabilities": [
+        0.059410154819488525,
+        0.30628594756126404,
+        0.634303867816925
+      ]
+    },
+    {
+      "path": "data/raw/paper/train_paper waste (1963).jpg",
+      "label": "paper",
+      "probabilities": [
+        0.046051204204559326,
+        0.3458738625049591,
+        0.608074963092804
+      ]
+    },
+    {
+      "path": "data/raw/paper/train_paper waste (2150).jpg",
+      "label": "paper",
+      "probabilities": [
+        0.15000955760478973,
+        0.19684037566184998,
+        0.6531500816345215
+      ]
+    },
+    {
+      "path": "data/raw/paper/train_paper waste (2182).jpg",
+      "label": "paper",
+      "probabilities": [
+        0.22074738144874573,
+        0.0651249811053276,
+        0.7141276001930237
+      ]
+    },
+    {
+      "path": "data/raw/paper/train_paper waste (2195).jpg",
+      "label": "paper",
+      "probabilities": [
+        0.006776899565011263,
+        0.019555917009711266,
+        0.9736671447753906
+      ]
+    },
+    {
+      "path": "data/raw/paper/train_paper waste (2349).jpg",
+      "label": "paper",
+      "probabilities": [
+        0.13291803002357483,
+        0.2982691824436188,
+        0.5688127875328064
+      ]
+    },
+    {
+      "path": "data/raw/paper/train_paper waste (2388).jpg",
+      "label": "paper",
+      "probabilities": [
+        0.061252616345882416,
+        0.4463654160499573,
+        0.4923820197582245
+      ]
+    },
+    {
+      "path": "data/raw/plastic/test_plastic waste (129).jpg",
+      "label": "plastic",
+      "probabilities": [
+        0.06798908114433289,
+        0.8249695301055908,
+        0.1070413812994957
+      ]
+    },
+    {
+      "path": "data/raw/plastic/test_plastic waste (75).jpg",
+      "label": "plastic",
+      "probabilities": [
+        0.051893994212150574,
+        0.8760361671447754,
+        0.07206989079713821
+      ]
+    },
+    {
+      "path": "data/raw/plastic/train_plastic waste (1228).jpg",
+      "label": "plastic",
+      "probabilities": [
+        0.12816163897514343,
+        0.8018927574157715,
+        0.06994559615850449
+      ]
+    },
+    {
+      "path": "data/raw/plastic/train_plastic waste (1244).jpg",
+      "label": "plastic",
+      "probabilities": [
+        0.2738950550556183,
+        0.679594874382019,
+        0.04651007056236267
+      ]
+    },
+    {
+      "path": "data/raw/plastic/train_plastic waste (1696).jpg",
+      "label": "plastic",
+      "probabilities": [
+        0.3275143504142761,
+        0.5860213041305542,
+        0.0864643007516861
+      ]
+    },
+    {
+      "path": "data/raw/plastic/train_plastic waste (1796).jpg",
+      "label": "plastic",
+      "probabilities": [
+        0.13091279566287994,
+        0.5782284140586853,
+        0.29085880517959595
+      ]
+    },
+    {
+      "path": "data/raw/plastic/train_plastic waste (1812).jpg",
+      "label": "plastic",
+      "probabilities": [
+        0.18768371641635895,
+        0.5347521901130676,
+        0.2775641679763794
+      ]
+    },
+    {
+      "path": "data/raw/plastic/train_plastic waste (1993).jpg",
+      "label": "plastic",
+      "probabilities": [
+        0.045090481638908386,
+        0.8264918327331543,
+        0.12841765582561493
+      ]
+    },
+    {
+      "path": "data/raw/plastic/train_plastic waste (650).jpg",
+      "label": "plastic",
+      "probabilities": [
+        0.08174154907464981,
+        0.6565952897071838,
+        0.2616632282733917
+      ]
+    },
+    {
+      "path": "data/raw/plastic/train_plastic waste (829).jpg",
+      "label": "plastic",
+      "probabilities": [
+        0.029415877535939217,
+        0.7311741709709167,
+        0.239409938454628
+      ]
+    }
+  ]
+}

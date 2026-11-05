@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import pandas as pd
@@ -45,15 +46,19 @@ def train_transform(image_size: int = 224) -> transforms.Compose:
     )
 
 
-def load_image(path: str | Path) -> Image.Image:
-    """Buka gambar, terapkan rotasi EXIF, lalu paksa ke RGB.
+def to_rgb(im: Image.Image) -> Image.Image:
+    """Terapkan rotasi EXIF lalu paksa ke RGB. Dipakai untuk file maupun upload.
 
     Foto dari HP sering menyimpan orientasi di metadata EXIF, bukan di piksel.
     Tanpa exif_transpose, foto potret tampil miring saat training dan inferensi.
     """
+    return ImageOps.exif_transpose(im).convert("RGB")
+
+
+def load_image(path: str | Path) -> Image.Image:
+    """Buka gambar dari path (relatif ke ROOT atau absolut), lalu to_rgb."""
     with Image.open(ROOT / path) as im:
-        im = ImageOps.exif_transpose(im)
-        return im.convert("RGB")
+        return to_rgb(im)
 
 
 class WasteDataset(Dataset):
@@ -72,3 +77,22 @@ class WasteDataset(Dataset):
         if self.transform is not None:
             img = self.transform(img)
         return img, torch.tensor(self.label_map[row["label"]])
+
+
+def file_sha256(path: str | Path) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def split_fingerprint(splits_dir: str | Path, names: tuple[str, ...] = ("train", "val", "test")) -> dict:
+    """Sidik jari dataset (dipakai sebagai 'versi dataset'): hash isi CSV dan jumlah per kelas."""
+    splits_dir = Path(splits_dir)
+    out: dict = {"files_sha256": {}, "rows": {}, "per_class": {}}
+    for name in names:
+        path = splits_dir / f"{name}.csv"
+        if not path.is_file():
+            continue
+        df = pd.read_csv(path)
+        out["files_sha256"][name] = file_sha256(path)
+        out["rows"][name] = len(df)
+        out["per_class"][name] = {str(k): int(v) for k, v in df["label"].value_counts().sort_index().items()}
+    return out

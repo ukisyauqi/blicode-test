@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.test
+uploads/
+uploads-test/
+models/*.onnx
+!.gitkeep
+*.log
