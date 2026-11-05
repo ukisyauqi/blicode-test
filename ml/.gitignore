@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Data & model artifacts (besar, tidak di-commit)
+data/*
+!data/SOURCES.md
+!data/.gitkeep
+models/*.pt
+models/*.onnx
+models/*.npz
+!models/.gitkeep
+
+# Reports berukuran besar boleh diabaikan; metrik ringkas tetap di-commit
+reports/*.png
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Catatan sumber dataset (dilacak)
+!data/SOURCES.md

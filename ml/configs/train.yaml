@@ -1,0 +1,34 @@
+# Konfigurasi training. Semua hyperparameter dan path berasal dari sini.
+
+seed: 42
+
+data:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  splits_dir: data/splits
+  classes: [organic, plastic, paper]
+  image_size: 224
+  val_ratio: 0.15
+  test_ratio: 0.15
+  max_per_class: 70        # ambil N gambar acak per kelas (seed sama); null = pakai semua
+
+model:
+  name: mobilenet_v3_large   # alternatif: efficientnet_b0
+  pretrained: true
+  dropout: 0.2
+
+train:
+  epochs_head: 5           # tahap 1: backbone dibekukan
+  epochs_finetune: 15      # tahap 2: fine-tuning
+  batch_size: 32
+  num_workers: 4
+  lr_head: 1.0e-3
+  lr_finetune: 1.0e-4
+  weight_decay: 1.0e-4
+  label_smoothing: 0.1
+  early_stopping_patience: 5
+  device: auto             # auto | cpu | mps | cuda
+
+output:
+  checkpoint_dir: models
+  reports_dir: reports

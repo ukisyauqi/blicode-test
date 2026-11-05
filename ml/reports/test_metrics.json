@@ -1,0 +1,53 @@
+{
+  "split": "test",
+  "model": "mobilenet_v3_large",
+  "checkpoint_epoch": "head:2",
+  "n_samples": 32,
+  "accuracy": 0.8438,
+  "macro_f1": 0.8385,
+  "per_class": {
+    "organic": {
+      "precision": 0.8333,
+      "recall": 1.0,
+      "f1": 0.9091,
+      "support": 10
+    },
+    "plastic": {
+      "precision": 0.875,
+      "recall": 0.6364,
+      "f1": 0.7368,
+      "support": 11
+    },
+    "paper": {
+      "precision": 0.8333,
+      "recall": 0.9091,
+      "f1": 0.8696,
+      "support": 11
+    }
+  },
+  "classes": [
+    "organic",
+    "plastic",
+    "paper"
+  ],
+  "confusion_matrix": [
+    [
+      10,
+      0,
+      0
+    ],
+    [
+      2,
+      7,
+      2
+    ],
+    [
+      0,
+      1,
+      10
+    ]
+  ],
+  "misclassified": 5,
+  "evaluated_at": "2026-11-05T09:42:03+07:00",
+  "catatan": "Test set dipakai sekali (PLAN §5). Jangan dipakai untuk memilih model."
+}

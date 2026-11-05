@@ -1,0 +1,28 @@
+{
+  "model": "mobilenet_v3_large embedding + logistic regression",
+  "split": "val",
+  "accuracy": 0.9677,
+  "macro_f1": 0.9666,
+  "confusion_matrix": [
+    [
+      11,
+      0,
+      0
+    ],
+    [
+      0,
+      9,
+      1
+    ],
+    [
+      0,
+      0,
+      10
+    ]
+  ],
+  "classes": [
+    "organic",
+    "plastic",
+    "paper"
+  ]
+}

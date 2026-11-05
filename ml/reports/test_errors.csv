@@ -1,0 +1,6 @@
+path,true_label,pred_label,pred_confidence,true_label_prob
+data/raw/paper/train_paper waste (88).jpg,paper,plastic,0.8471,0.1376
+data/raw/plastic/test_plastic waste (158).jpg,plastic,paper,0.4491,0.2891
+data/raw/plastic/train_plastic waste (1109).jpg,plastic,organic,0.41,0.3892
+data/raw/plastic/train_plastic waste (1548).jpg,plastic,organic,0.7047,0.2454
+data/raw/plastic/train_plastic waste (1589).jpg,plastic,paper,0.7149,0.2533
