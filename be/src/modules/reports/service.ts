@@ -1,12 +1,13 @@
 import { unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { and, asc, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNull, lt, lte, or, sql } from "drizzle-orm";
 
 import { env } from "../../config/env.js";
 import { logger } from "../../config/logger.js";
 import { db } from "../../db/index.js";
-import { reportStatusHistory, reports } from "../../db/schema.js";
+import { reportStatusHistory, reports, users } from "../../db/schema.js";
+import { parseDateBound, startOfDayInZone, startOfNextDayInZone } from "../../lib/dateRange.js";
 import { AppError, conflict, notFound, unprocessable } from "../../lib/errors.js";
 import { assertTransition } from "../../lib/statusTransition.js";
 import type { AuthUser } from "../../middleware/auth.js";
@@ -22,8 +23,16 @@ import type {
 
 type Photo = Express.Multer.File | undefined;
 type ReportRow = typeof reports.$inferSelect;
+type Reporter = { id: string; name: string; email: string; role: "admin" | "user" } | null;
 
-export async function create(userId: string, input: CreateReportInput, photo: Photo) {
+const reporterColumns = {
+  id: users.id,
+  name: users.name,
+  email: users.email,
+  role: users.role,
+};
+
+export async function create(user: AuthUser, input: CreateReportInput, photo: Photo) {
   let predictedCategory: "organic" | "plastic" | "paper" | null = null;
   let predictedConfidence: number | null = null;
 
@@ -57,7 +66,7 @@ export async function create(userId: string, input: CreateReportInput, photo: Ph
       const [report] = await tx
         .insert(reports)
         .values({
-          userId,
+          userId: user.id,
           title: input.title,
           description: input.description,
           category,
@@ -73,10 +82,15 @@ export async function create(userId: string, input: CreateReportInput, photo: Ph
       await tx.insert(reportStatusHistory).values({
         reportId: report!.id,
         toStatus: "pending",
-        changedBy: userId,
+        changedBy: user.id,
       });
 
-      return toReport(report!);
+      return toReport(report!, {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      });
     });
   } catch (error) {
     if (photoPath) await unlink(join(env.UPLOAD_DIR, photoPath)).catch(() => undefined);
@@ -85,7 +99,13 @@ export async function create(userId: string, input: CreateReportInput, photo: Ph
 }
 
 export async function list(user: AuthUser, query: ListReportsQuery) {
-  if (query.from && query.to && query.from > query.to) {
+  const timeZone = env.APP_TIMEZONE;
+  const from = parseDateBound(query.from);
+  const to = parseDateBound(query.to);
+  const fromDateOnly = from?.kind === "dateOnly" ? from.dateOnly : undefined;
+  const toDateOnly = to?.kind === "dateOnly" ? to.dateOnly : undefined;
+
+  if (fromDateOnly && toDateOnly && fromDateOnly > toDateOnly) {
     throw unprocessable("Tanggal awal tidak boleh setelah tanggal akhir");
   }
 
@@ -98,8 +118,23 @@ export async function list(user: AuthUser, query: ListReportsQuery) {
 
   if (query.status) conditions.push(eq(reports.status, query.status));
   if (query.category) conditions.push(eq(reports.category, query.category));
-  if (query.from) conditions.push(gte(reports.createdAt, query.from));
-  if (query.to) conditions.push(lte(reports.createdAt, query.to));
+  if (from) {
+    conditions.push(
+      gte(
+        reports.createdAt,
+        from.kind === "dateOnly"
+          ? startOfDayInZone(from.dateOnly, timeZone)
+          : from.instant,
+      ),
+    );
+  }
+  if (to) {
+    conditions.push(
+      to.kind === "dateOnly"
+        ? lt(reports.createdAt, startOfNextDayInZone(to.dateOnly, timeZone))
+        : lte(reports.createdAt, to.instant),
+    );
+  }
   if (query.search) {
     const term = `%${query.search}%`;
     const search = or(
@@ -121,8 +156,9 @@ export async function list(user: AuthUser, query: ListReportsQuery) {
 
   const [rows, totalRows] = await Promise.all([
     db
-      .select()
+      .select({ report: reports, reporter: reporterColumns })
       .from(reports)
+      .leftJoin(users, eq(reports.userId, users.id))
       .where(where)
       .orderBy(...order)
       .limit(query.limit)
@@ -135,7 +171,7 @@ export async function list(user: AuthUser, query: ListReportsQuery) {
 
   const total = totalRows[0]?.count ?? 0;
   return {
-    data: rows.map(toReport),
+    data: rows.map(({ report, reporter }) => toReport(report, reporter)),
     meta: {
       page: query.page,
       limit: query.limit,
@@ -146,11 +182,12 @@ export async function list(user: AuthUser, query: ListReportsQuery) {
 }
 
 export async function get(user: AuthUser, id: string) {
-  return toReport(await findReport(user, id));
+  const { report, reporter } = await findReport(user, id);
+  return toReport(report, reporter);
 }
 
 export async function update(user: AuthUser, id: string, input: UpdateReportInput, photo: Photo) {
-  const current = await findReport(user, id);
+  const { report: current, reporter } = await findReport(user, id);
   if (user.role !== "admin" && current.status !== "pending") {
     throw conflict("Laporan hanya bisa diubah saat status pending");
   }
@@ -199,7 +236,7 @@ export async function update(user: AuthUser, id: string, input: UpdateReportInpu
       .set({ ...patch, updatedAt: new Date() })
       .where(eq(reports.id, id))
       .returning();
-    return toReport(updated!);
+    return toReport(updated!, reporter);
   } catch (error) {
     if (newPhotoPath) await unlink(join(env.UPLOAD_DIR, newPhotoPath)).catch(() => undefined);
     throw error;
@@ -207,7 +244,7 @@ export async function update(user: AuthUser, id: string, input: UpdateReportInpu
 }
 
 export async function remove(user: AuthUser, id: string) {
-  const current = await findReport(user, id);
+  const { report: current } = await findReport(user, id);
   if (user.role !== "admin" && current.status !== "pending") {
     throw conflict("Laporan hanya bisa dihapus saat status pending");
   }
@@ -218,7 +255,7 @@ export async function remove(user: AuthUser, id: string) {
 }
 
 export async function changeStatus(user: AuthUser, id: string, input: StatusInput) {
-  const current = await findReport(user, id);
+  const { report: current, reporter } = await findReport(user, id);
   assertTransition(current.status, input.status);
 
   const updated = await db.transaction(async (tx) => {
@@ -242,35 +279,50 @@ export async function changeStatus(user: AuthUser, id: string, input: StatusInpu
     return row;
   });
 
-  return toReport(updated!);
+  return toReport(updated!, reporter);
 }
 
 export async function history(user: AuthUser, id: string) {
   await findReport(user, id);
   return db
-    .select()
+    .select({
+      id: reportStatusHistory.id,
+      reportId: reportStatusHistory.reportId,
+      fromStatus: reportStatusHistory.fromStatus,
+      toStatus: reportStatusHistory.toStatus,
+      changedBy: reportStatusHistory.changedBy,
+      changedByUser: reporterColumns,
+      note: reportStatusHistory.note,
+      createdAt: reportStatusHistory.createdAt,
+    })
     .from(reportStatusHistory)
+    .leftJoin(users, eq(reportStatusHistory.changedBy, users.id))
     .where(eq(reportStatusHistory.reportId, id))
     .orderBy(asc(reportStatusHistory.createdAt));
 }
 
-async function findReport(user: AuthUser, id: string): Promise<ReportRow> {
-  const [report] = await db
-    .select()
+async function findReport(
+  user: AuthUser,
+  id: string,
+): Promise<{ report: ReportRow; reporter: Reporter }> {
+  const [row] = await db
+    .select({ report: reports, reporter: reporterColumns })
     .from(reports)
+    .leftJoin(users, eq(reports.userId, users.id))
     .where(and(eq(reports.id, id), isNull(reports.deletedAt)))
     .limit(1);
 
-  if (!report || (user.role !== "admin" && report.userId !== user.id)) {
+  if (!row || (user.role !== "admin" && row.report.userId !== user.id)) {
     throw notFound("Laporan tidak ditemukan");
   }
-  return report;
+  return { report: row.report, reporter: row.reporter };
 }
 
-export function toReport(row: ReportRow) {
+export function toReport(row: ReportRow, reporter: Reporter = null) {
   return {
     id: row.id,
     userId: row.userId,
+    reporter,
     title: row.title,
     description: row.description,
     category: row.category,

@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import jwt from "jsonwebtoken";
 
 import { env } from "../../config/env.js";
@@ -64,6 +64,17 @@ export async function login(input: { email: string; password: string }): Promise
     throw unauthorized("Email atau password salah");
   }
   return { id: user.id, name: user.name, email: user.email, role: user.role };
+}
+
+export async function updateProfile(userId: string, input: { name: string }) {
+  const [user] = await db
+    .update(users)
+    .set({ name: input.name, updatedAt: new Date() })
+    .where(and(eq(users.id, userId), eq(users.isActive, true), isNull(users.deletedAt)))
+    .returning(publicUser);
+
+  if (!user) throw unauthorized("Sesi tidak valid");
+  return user;
 }
 
 export async function changePassword(userId: string, current: string, next: string) {

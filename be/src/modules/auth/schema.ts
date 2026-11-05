@@ -21,3 +21,9 @@ export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
   newPassword: password,
 });
+
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

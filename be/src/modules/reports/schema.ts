@@ -7,6 +7,17 @@ const category = z.preprocess(
 
 const status = z.enum(["pending", "in_progress", "completed", "rejected"]);
 
+const dateFilter = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z
+    .string()
+    .trim()
+    .refine((value) => !Number.isNaN(new Date(value).getTime()), {
+      message: "Format tanggal tidak valid",
+    })
+    .optional(),
+);
+
 export const createReportSchema = z.object({
   title: z.string().trim().min(1),
   description: z.string().trim().min(1),
@@ -29,8 +40,8 @@ export const listReportsQuery = z.object({
   search: z.string().trim().optional(),
   status: status.optional(),
   category: z.enum(["organic", "plastic", "paper"]).optional(),
-  from: z.coerce.date().optional(),
-  to: z.coerce.date().optional(),
+  from: dateFilter,
+  to: dateFilter,
   reporter_id: z.string().uuid().optional(),
   sort: z.enum(["created_at_desc", "created_at_asc", "status"]).default("created_at_desc"),
   page: z.coerce.number().int().min(1).default(1),

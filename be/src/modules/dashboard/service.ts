@@ -1,27 +1,62 @@
-import { and, asc, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lt, lte, sql } from "drizzle-orm";
 
+import { env } from "../../config/env.js";
 import { db } from "../../db/index.js";
 import { reports } from "../../db/schema.js";
+import {
+  addDaysToDateOnly,
+  formatDateInZone,
+  parseDateBound,
+  startOfDayInZone,
+  startOfNextDayInZone,
+} from "../../lib/dateRange.js";
 import { unprocessable } from "../../lib/errors.js";
 import type { AuthUser } from "../../middleware/auth.js";
 import type { StatsQuery } from "./schema.js";
 
 const counts = sql<number>`count(*)::int`;
+const DEFAULT_RANGE_DAYS = 30;
 
 export async function stats(user: AuthUser, query: StatsQuery) {
-  const to = query.to ?? new Date();
-  const from = query.from ?? new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const timeZone = env.APP_TIMEZONE;
+  const fromBound = parseDateBound(query.from);
+  const toBound = parseDateBound(query.to);
+  const fromDateOnly = fromBound?.kind === "dateOnly" ? fromBound.dateOnly : undefined;
+  const toDateOnly = toBound?.kind === "dateOnly" ? toBound.dateOnly : undefined;
+
+  if (fromDateOnly && toDateOnly && fromDateOnly > toDateOnly) {
+    throw unprocessable("Tanggal awal tidak boleh setelah tanggal akhir");
+  }
+
+  const to = toBound
+    ? toBound.kind === "dateOnly"
+      ? startOfNextDayInZone(toBound.dateOnly, timeZone)
+      : toBound.instant
+    : new Date();
+
+  const from = fromBound
+    ? fromBound.kind === "dateOnly"
+      ? startOfDayInZone(fromBound.dateOnly, timeZone)
+      : fromBound.instant
+    : startOfDayInZone(
+        addDaysToDateOnly(
+          toDateOnly ?? formatDateInZone(to, timeZone),
+          -(DEFAULT_RANGE_DAYS - 1),
+        ),
+        timeZone,
+      );
+
   if (from > to) throw unprocessable("Tanggal awal tidak boleh setelah tanggal akhir");
 
   const conditions = [
     isNull(reports.deletedAt),
     gte(reports.createdAt, from),
-    lte(reports.createdAt, to),
+    toBound?.kind === "dateOnly" ? lt(reports.createdAt, to) : lte(reports.createdAt, to),
   ];
   if (user.role !== "admin") conditions.push(eq(reports.userId, user.id));
   const where = and(...conditions);
 
-  const day = sql<string>`to_char(date_trunc('day', ${reports.createdAt}), 'YYYY-MM-DD')`;
+  const day = sql<string>`to_char(date_trunc('day', ${reports.createdAt} AT TIME ZONE ${timeZone}), 'YYYY-MM-DD')`;
   const latitude = sql<number>`round(${reports.latitude}, 3)`;
   const longitude = sql<number>`round(${reports.longitude}, 3)`;
 
@@ -40,8 +75,8 @@ export async function stats(user: AuthUser, query: StatsQuery) {
       .select({ date: day, count: counts })
       .from(reports)
       .where(where)
-      .groupBy(day)
-      .orderBy(asc(day)),
+      .groupBy(sql`1`)
+      .orderBy(sql`1`),
     db
       .select({ latitude, longitude, count: counts })
       .from(reports)

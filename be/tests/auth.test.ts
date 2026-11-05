@@ -6,6 +6,13 @@ import { db } from "../src/db/index.js";
 import { users } from "../src/db/schema.js";
 import { app } from "./helpers.js";
 
+async function registerAni() {
+  const response = await request(app)
+    .post("/api/auth/register")
+    .send({ name: "Ani", email: "ani@example.com", password: "password123" });
+  return { cookie: response.headers["set-cookie"]![0]! };
+}
+
 describe("auth", () => {
   it("register membuat user biasa dan mengabaikan role dari klien", async () => {
     const response = await request(app)
@@ -94,5 +101,72 @@ describe("auth", () => {
       .post("/api/auth/login")
       .send({ email: "ani@example.com", password: "password456" });
     expect(newLogin.status).toBe(200);
+  });
+});
+
+describe("profil", () => {
+  it("PATCH /api/auth/me butuh login", async () => {
+    const response = await request(app).patch("/api/auth/me").send({ name: "Nama Baru" });
+    expect(response.status).toBe(401);
+  });
+
+  it("mengubah nama profil dan mengembalikan data terbaru", async () => {
+    const { cookie } = await registerAni();
+
+    const response = await request(app)
+      .patch("/api/auth/me")
+      .set("Cookie", cookie)
+      .send({ name: "Ani Baru" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toMatchObject({
+      name: "Ani Baru",
+      email: "ani@example.com",
+      role: "user",
+    });
+    expect(response.body.data).not.toHaveProperty("passwordHash");
+  });
+
+  it("nama baru terbaca pada GET /api/auth/me", async () => {
+    const { cookie } = await registerAni();
+    await request(app).patch("/api/auth/me").set("Cookie", cookie).send({ name: "Ani Baru" });
+
+    const me = await request(app).get("/api/auth/me").set("Cookie", cookie);
+    expect(me.status).toBe(200);
+    expect(me.body.data.name).toBe("Ani Baru");
+  });
+
+  it("nama kosong ditolak 422", async () => {
+    const { cookie } = await registerAni();
+    const response = await request(app)
+      .patch("/api/auth/me")
+      .set("Cookie", cookie)
+      .send({ name: "   " });
+    expect(response.status).toBe(422);
+  });
+
+  it("tidak bisa menaikkan role lewat payload profil", async () => {
+    const { cookie } = await registerAni();
+    const response = await request(app)
+      .patch("/api/auth/me")
+      .set("Cookie", cookie)
+      .send({ name: "Ani Baru", role: "admin" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.role).toBe("user");
+
+    const me = await request(app).get("/api/auth/me").set("Cookie", cookie);
+    expect(me.body.data.role).toBe("user");
+  });
+
+  it("user yang dinonaktifkan tidak bisa mengubah profil", async () => {
+    const { cookie } = await registerAni();
+    await db.update(users).set({ isActive: false }).where(eq(users.email, "ani@example.com"));
+
+    const response = await request(app)
+      .patch("/api/auth/me")
+      .set("Cookie", cookie)
+      .send({ name: "Nama Baru" });
+    expect(response.status).toBe(401);
   });
 });

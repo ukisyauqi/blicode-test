@@ -7,7 +7,7 @@ import { idSchema, listReportsQuery } from "./schema.js";
 import * as service from "./service.js";
 
 export async function create(req: Request, res: Response) {
-  const report = await service.create(req.user!.id, req.body, req.file);
+  const report = await service.create(req.user!, req.body, req.file);
   res.status(201).json({ data: report });
 }
 

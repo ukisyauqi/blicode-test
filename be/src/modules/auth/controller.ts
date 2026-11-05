@@ -28,6 +28,11 @@ export function me(req: Request, res: Response) {
   res.json({ data: req.user });
 }
 
+export async function updateProfile(req: Request, res: Response) {
+  const user = await service.updateProfile(req.user!.id, req.body);
+  res.json({ data: user });
+}
+
 export async function changePassword(req: Request, res: Response) {
   await service.changePassword(req.user!.id, req.body.currentPassword, req.body.newPassword);
   res.status(204).end();
