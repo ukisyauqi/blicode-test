@@ -64,3 +64,15 @@ test("admin dapat menonaktifkan pengguna lain dari tabel", async ({ page, mockSt
   const budi = mockState.users.find((user) => user.id === "user-budi");
   expect(budi?.isActive).toBe(false);
 });
+
+test("admin melihat nama pelapor dan aktor riwayat", async ({ page }) => {
+  await loginAs(page, "admin@example.com");
+  await page.goto("/reports");
+
+  await expect(page.getByRole("columnheader", { name: "Pelapor" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: /Budi Santoso/ })).toHaveCount(2);
+
+  await page.goto("/reports/report-1");
+  await expect(page.getByText("Budi Santoso").first()).toBeVisible();
+  await expect(page.getByText(/Budi Santoso ·/)).toBeVisible();
+});
