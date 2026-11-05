@@ -1,12 +1,13 @@
 import { unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { and, asc, desc, eq, gte, ilike, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNull, lt, lte, or, sql } from "drizzle-orm";
 
 import { env } from "../../config/env.js";
 import { logger } from "../../config/logger.js";
 import { db } from "../../db/index.js";
 import { reportStatusHistory, reports } from "../../db/schema.js";
+import { parseDateBound, startOfDayInZone, startOfNextDayInZone } from "../../lib/dateRange.js";
 import { AppError, conflict, notFound, unprocessable } from "../../lib/errors.js";
 import { assertTransition } from "../../lib/statusTransition.js";
 import type { AuthUser } from "../../middleware/auth.js";
@@ -85,7 +86,13 @@ export async function create(userId: string, input: CreateReportInput, photo: Ph
 }
 
 export async function list(user: AuthUser, query: ListReportsQuery) {
-  if (query.from && query.to && query.from > query.to) {
+  const timeZone = env.APP_TIMEZONE;
+  const from = parseDateBound(query.from);
+  const to = parseDateBound(query.to);
+  const fromDateOnly = from?.kind === "dateOnly" ? from.dateOnly : undefined;
+  const toDateOnly = to?.kind === "dateOnly" ? to.dateOnly : undefined;
+
+  if (fromDateOnly && toDateOnly && fromDateOnly > toDateOnly) {
     throw unprocessable("Tanggal awal tidak boleh setelah tanggal akhir");
   }
 
@@ -98,8 +105,23 @@ export async function list(user: AuthUser, query: ListReportsQuery) {
 
   if (query.status) conditions.push(eq(reports.status, query.status));
   if (query.category) conditions.push(eq(reports.category, query.category));
-  if (query.from) conditions.push(gte(reports.createdAt, query.from));
-  if (query.to) conditions.push(lte(reports.createdAt, query.to));
+  if (from) {
+    conditions.push(
+      gte(
+        reports.createdAt,
+        from.kind === "dateOnly"
+          ? startOfDayInZone(from.dateOnly, timeZone)
+          : from.instant,
+      ),
+    );
+  }
+  if (to) {
+    conditions.push(
+      to.kind === "dateOnly"
+        ? lt(reports.createdAt, startOfNextDayInZone(to.dateOnly, timeZone))
+        : lte(reports.createdAt, to.instant),
+    );
+  }
   if (query.search) {
     const term = `%${query.search}%`;
     const search = or(

@@ -18,6 +18,13 @@ npm run dev
 
 `DATABASE_URL` bisa memakai Neon atau PostgreSQL lokal. Driver `pg` mendukung keduanya; untuk Neon gunakan connection string pooled.
 
+Filter tanggal (`from`/`to`) menerima dua bentuk:
+
+- `YYYY-MM-DD` diartikan sebagai satu hari kalender penuh di zona `APP_TIMEZONE` (default `Asia/Jakarta`).
+- Timestamp ISO lengkap (mis. `2026-11-05T10:00:00Z`) diartikan sebagai instant persis.
+
+Zona waktu aplikasi dapat diubah lewat env `APP_TIMEZONE`.
+
 ## Model klasifikasi
 
 Model tidak di-commit. Salin dari folder ML:
@@ -43,7 +50,7 @@ Semua endpoint memakai prefix `/api`. Sukses: `{ data, meta? }`. Error: `{ error
 Auth:
 
 - `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`
-- `GET /auth/me`, `PATCH /auth/me/password`
+- `GET /auth/me`, `PATCH /auth/me`, `PATCH /auth/me/password`
 
 Reports (login):
 

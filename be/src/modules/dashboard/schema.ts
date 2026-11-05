@@ -1,13 +1,19 @@
 import { z } from "zod";
 
-export const statsQuery = z
-  .object({
-    from: z.coerce.date().optional(),
-    to: z.coerce.date().optional(),
-  })
-  .refine((query) => !query.from || !query.to || query.from <= query.to, {
-    message: "Tanggal awal tidak boleh setelah tanggal akhir",
-    path: ["from"],
-  });
+const dateFilter = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z
+    .string()
+    .trim()
+    .refine((value) => !Number.isNaN(new Date(value).getTime()), {
+      message: "Format tanggal tidak valid",
+    })
+    .optional(),
+);
+
+export const statsQuery = z.object({
+  from: dateFilter,
+  to: dateFilter,
+});
 
 export type StatsQuery = z.infer<typeof statsQuery>;

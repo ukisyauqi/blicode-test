@@ -9,6 +9,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRES_IN: z.string().default("7d"),
   CORS_ORIGIN: z.string().url().default("http://localhost:5173"),
+  APP_TIMEZONE: z.string().default("Asia/Jakarta"),
   UPLOAD_DIR: z.string().default("./uploads"),
   MAX_UPLOAD_SIZE_MB: z.coerce.number().positive().default(5),
   ML_MODEL_PATH: z.string().default("./models/best.onnx"),
