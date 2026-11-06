@@ -3,7 +3,7 @@ services:
     name: lapor-sampah-be
     runtime: node
     rootDir: be
-    buildCommand: npm ci && npm run build && ./scripts/fetch-model.sh && npm run db:migrate
+    buildCommand: npm ci --include=dev && npm run build && ./scripts/fetch-model.sh && npm run db:migrate && npm run db:seed
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeploy: true
