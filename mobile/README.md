@@ -19,8 +19,10 @@ dashboard semua laporan) tetap lewat web. Rencana lengkap: [`PLAN.md`](PLAN.md).
 | Foto            | `expo-image-picker` (kamera / galeri)                |
 | Lokasi          | `expo-location` (GPS + tombol "lokasi saya")         |
 | Peta            | `react-native-maps` (pilih titik tap/drag)           |
-| Sesi            | `expo-secure-store` (token Bearer)                   |
+| Sesi            | `expo-secure-store` (token Bearer; `localStorage` di web)    |
 | Grafik          | Bar digambar manual dengan `View` (tanpa lib chart)  |
+| Ikon & hero     | `@expo/vector-icons`, `expo-linear-gradient`         |
+| Web             | `react-native-web` + `react-dom` via `expo start --web` |
 | Testing         | Node test runner (`node --test`, tanpa Vitest)       |
 
 ## Prasyarat
@@ -37,6 +39,7 @@ cd mobile
 npm install
 cp .env.example .env   # lalu isi EXPO_PUBLIC_API_URL dengan IP LAN kamu
 npx expo start         # buka lewat Expo Go (scan QR)
+npx expo start --web   # alternatif: jalan di browser (lihat "Jalan di web")
 ```
 
 | Perintah            | Fungsi                                      |
@@ -44,6 +47,22 @@ npx expo start         # buka lewat Expo Go (scan QR)
 | `npm test`          | Tes API client (Node test runner)           |
 | `npm run typecheck` | Pemeriksaan tipe TypeScript                 |
 | `npx expo start`    | Dev server + QR untuk Expo Go               |
+| `npx expo start --web` | Dev server web di `http://localhost:8081` |
+
+## Jalan di web
+
+`npx expo start --web` membuka aplikasi yang sama di browser — berguna untuk
+verifikasi cepat tanpa HP. Penyesuaian khusus web (otomatis, tanpa config):
+
+- Token sesi memakai `localStorage` (SecureStore tidak ada di browser).
+- `react-native-maps` tidak jalan di browser: form memakai input koordinat
+  manual (`MapPicker.web.tsx`), detail memakai tautan Google Maps
+  (`ReportMap.web.tsx`). Di native tetap peta penuh.
+- Tombol Kamera disembunyikan di web; Galeri memakai file picker browser.
+  Upload foto di web dikirim sebagai `Blob` asli (`photoForm` async).
+- Browser menegakkan CORS: untuk uji lokal, `CORS_ORIGIN` di `be/.env` harus
+  mencakup origin web (`http://localhost:8081`). Jangan commit perubahan itu
+  bila origin normalnya `http://localhost:5173` (untuk `web/`).
 
 Tidak ada script `lint` di mobile; sebelum merge cukup `npm test` + `npm run typecheck`
 plus uji melawan backend lokal + data demo (`npm run db:seed:demo` di `be/`).

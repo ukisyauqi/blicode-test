@@ -11,7 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import { api, fileUrl, ApiError } from "../../src/lib/api";
 import { STATUS_META } from "../../src/lib/constants";
-import { Badge, Btn, Field, Screen, Title, c } from "../../src/ui";
+import { Badge, Btn, Card, Field, Screen, Title, c } from "../../src/ui";
 import type { Report, Status } from "../../src/types";
 
 const STATUS_OPTS: (Status | "")[] = ["", "pending", "in_progress", "completed", "rejected"];
@@ -36,15 +36,15 @@ export default function Reports() {
       setLoading(true);
       setErr(null);
       try {
-        const qs = new URLSearchParams({
-          search: appliedQ,
-          status,
-          category,
-          sort,
-          page: String(p),
-          limit: "10",
-        }).toString();
-        const r = await api<Report[]>(`/reports?${qs}`);
+        // Param kosong (status=/category=) ditolak backend (422); kirim hanya yang terisi.
+        const qs = new URLSearchParams();
+        if (appliedQ.trim()) qs.set("search", appliedQ.trim());
+        if (status) qs.set("status", status);
+        if (category) qs.set("category", category);
+        qs.set("sort", sort);
+        qs.set("page", String(p));
+        qs.set("limit", "10");
+        const r = await api<Report[]>(`/reports?${qs.toString()}`);
         setItems((prev) => (reset ? r.data : [...prev, ...r.data]));
         setTotalPages(r.meta?.totalPages ?? 1);
         setPage(p);
@@ -84,14 +84,16 @@ export default function Reports() {
   return (
     <Screen>
       <Title>Riwayat Laporan</Title>
-      <View style={s.searchRow}>
-        <View style={{ flex: 1 }}>
-          <Field label="" value={q} onChangeText={setQ} placeholder="Cari judul, deskripsi, alamat..." onSubmitEditing={() => setAppliedQ(q)} />
+      <Card>
+        <View style={s.searchRow}>
+          <View style={{ flex: 1 }}>
+            <Field label="" value={q} onChangeText={setQ} placeholder="Cari judul, deskripsi, alamat..." onSubmitEditing={() => setAppliedQ(q)} />
+          </View>
+          <Pressable style={s.go} onPress={() => setAppliedQ(q)}>
+            <Text style={s.goText}>Cari</Text>
+          </Pressable>
         </View>
-        <Pressable style={s.go} onPress={() => setAppliedQ(q)}>
-          <Text style={s.goText}>Cari</Text>
-        </Pressable>
-      </View>
+      </Card>
       <View style={s.chipRow}>
         {STATUS_OPTS.map((o) => (
           <Pressable key={o || "all"} onPress={() => setStatus(o)} style={[s.chip, status === o && s.chipOn]}>
@@ -143,15 +145,27 @@ export default function Reports() {
 
 const s = StyleSheet.create({
   searchRow: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
-  go: { backgroundColor: c.ink, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 11, marginBottom: 12 },
+  go: { backgroundColor: c.primary, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 12 },
   goText: { color: c.white, fontWeight: "700" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8 },
-  chip: { borderWidth: 1, borderColor: c.line, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
-  chipOn: { backgroundColor: c.ink, borderColor: c.ink },
-  chipText: { color: c.ink, fontSize: 13 },
+  chip: { borderWidth: 1, borderColor: c.line, borderRadius: 999, paddingHorizontal: 13, paddingVertical: 7, backgroundColor: c.white },
+  chipOn: { backgroundColor: c.primary, borderColor: c.primary },
+  chipText: { color: c.ink, fontSize: 13, fontWeight: "600" },
   chipTextOn: { color: c.white, fontWeight: "700", fontSize: 13 },
-  card: { flexDirection: "row", gap: 10, borderWidth: 1, borderColor: c.line, borderRadius: 10, padding: 8, marginBottom: 8 },
-  thumb: { width: 72, height: 72, borderRadius: 8, backgroundColor: c.bg },
+  card: {
+    flexDirection: "row",
+    gap: 12,
+    backgroundColor: c.white,
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 10,
+    shadowColor: c.shadow,
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  thumb: { width: 76, height: 76, borderRadius: 10, backgroundColor: c.bg },
   thumbEmpty: { backgroundColor: c.bg },
   cardBody: { flex: 1, gap: 4 },
   cardTitle: { fontWeight: "700", color: c.ink, fontSize: 15 },

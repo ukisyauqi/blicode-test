@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../src/auth";
 import { api, ApiError } from "../../src/lib/api";
 import { passwordSchema } from "../../src/lib/validation";
-import { Btn, Field, Screen, Title, c } from "../../src/ui";
+import { Btn, Card, Field, Hero, Screen, Title, c } from "../../src/ui";
 
 export default function Profile() {
   const { user, logout } = useAuth();
@@ -35,22 +35,33 @@ export default function Profile() {
     <Screen>
       <ScrollView>
         <Title>Profil</Title>
-        <Text style={s.name}>{user?.name}</Text>
-        <Text style={s.sub}>{user?.email}</Text>
-        <Text style={s.h}>Ganti password</Text>
-        <Field label="Password lama" value={current} onChangeText={setCurrent} secureTextEntry />
-        <Field label="Password baru (min. 8 karakter)" value={next} onChangeText={setNext} secureTextEntry />
-        <Field label="Konfirmasi password baru" value={confirm} onChangeText={setConfirm} secureTextEntry />
-        {msg ? <Text style={{ color: msg.ok ? c.primary : "#b91c1c", marginBottom: 8 }}>{msg.text}</Text> : null}
-        <Btn label={busy ? "Memproses..." : "Ganti password"} onPress={changePassword} disabled={busy} />
-        <View style={s.about}>
+        <Hero>
+          <View style={s.me}>
+            <View style={s.avatar}>
+              <Text style={s.avatarText}>{(user?.name ?? "?").trim().charAt(0).toUpperCase()}</Text>
+            </View>
+            <View>
+              <Text style={s.name}>{user?.name}</Text>
+              <Text style={s.mail}>{user?.email}</Text>
+            </View>
+          </View>
+        </Hero>
+        <Card>
+          <Text style={s.h}>🔒 Ganti password</Text>
+          <Field label="Password lama" value={current} onChangeText={setCurrent} secureTextEntry />
+          <Field label="Password baru (min. 8 karakter)" value={next} onChangeText={setNext} secureTextEntry />
+          <Field label="Konfirmasi password baru" value={confirm} onChangeText={setConfirm} secureTextEntry />
+          {msg ? <Text style={{ color: msg.ok ? c.primary : "#b91c1c", marginBottom: 8 }}>{msg.text}</Text> : null}
+          <Btn label={busy ? "Memproses..." : "Ganti password"} onPress={changePassword} disabled={busy} />
+        </Card>
+        <Card>
           <Text style={s.h}>Tentang</Text>
-          <Text style={s.sub}>
+          <Text style={s.about}>
             Lapor Sampah — pelaporan sampah dengan klasifikasi gambar otomatis (organik, plastik, kertas).
             Model dilatih dengan Custom Waste Classification Dataset oleh wasifmahmood01 (Kaggle),
             lisensi CC BY-NC-SA 4.0. Penggunaan non-komersial untuk tugas kuliah.
           </Text>
-        </View>
+        </Card>
         <Btn label="Keluar" tone="danger" onPress={logout} />
       </ScrollView>
     </Screen>
@@ -58,8 +69,18 @@ export default function Profile() {
 }
 
 const s = StyleSheet.create({
-  name: { fontSize: 18, fontWeight: "700", color: c.ink },
-  sub: { color: c.sub, fontSize: 14, marginBottom: 4 },
-  h: { fontSize: 16, fontWeight: "700", color: c.ink, marginTop: 16, marginBottom: 8 },
-  about: { marginTop: 16, marginBottom: 16, backgroundColor: c.bg, borderRadius: 10, padding: 12 },
+  me: { flexDirection: "row", alignItems: "center", gap: 14 },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { fontSize: 26, fontWeight: "800", color: c.primaryDeep },
+  name: { fontSize: 19, fontWeight: "800", color: "#ffffff" },
+  mail: { color: "#d1fae5", fontSize: 14 },
+  h: { fontSize: 16, fontWeight: "800", color: c.ink, marginBottom: 10 },
+  about: { color: c.sub, fontSize: 14, lineHeight: 21 },
 });

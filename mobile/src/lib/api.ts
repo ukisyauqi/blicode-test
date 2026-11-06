@@ -1,5 +1,18 @@
 import * as SecureStore from "expo-secure-store";
 
+// SecureStore tidak ada di web; pakai localStorage. Deteksi tanpa import
+// react-native agar file ini tetap bisa dites di Node polos.
+export const isWeb =
+  typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+
+const store = isWeb
+  ? {
+      getItemAsync: async (k: string) => window.localStorage.getItem(k),
+      setItemAsync: async (k: string, v: string) => void window.localStorage.setItem(k, v),
+      deleteItemAsync: async (k: string) => void window.localStorage.removeItem(k),
+    }
+  : SecureStore;
+
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
 const TOKEN_KEY = "auth_token";
@@ -12,18 +25,18 @@ export function setOnUnauthorized(fn: (() => void) | null) {
 
 export async function getToken(): Promise<string | null> {
   if (mem !== undefined) return mem;
-  mem = await SecureStore.getItemAsync(TOKEN_KEY);
+  mem = await store.getItemAsync(TOKEN_KEY);
   return mem;
 }
 
 export async function setToken(t: string) {
   mem = t;
-  await SecureStore.setItemAsync(TOKEN_KEY, t);
+  await store.setItemAsync(TOKEN_KEY, t);
 }
 
 export async function clearToken() {
   mem = null;
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
+  await store.deleteItemAsync(TOKEN_KEY);
 }
 
 export class ApiError extends Error {
@@ -85,10 +98,16 @@ export function fileUrl(path: string | null): string | null {
   return API_URL.replace(/\/api\/?$/, "") + path;
 }
 
-export function photoForm(uri: string, field: string): FormData {
+export async function photoForm(uri: string, field: string): Promise<FormData> {
   const ext = uri.split(".").pop()?.toLowerCase().split("?")[0] ?? "jpg";
   const type = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
   const form = new FormData();
-  form.append(field, { uri, name: `photo.${ext}`, type } as unknown as Blob);
+  if (isWeb) {
+    // FormData web butuh Blob asli; object RN { uri, name, type } ditolak fetch.
+    const blob = await (await fetch(uri)).blob();
+    form.append(field, blob, `photo.${ext}`);
+  } else {
+    form.append(field, { uri, name: `photo.${ext}`, type } as unknown as Blob);
+  }
   return form;
 }
