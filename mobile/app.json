@@ -45,7 +45,8 @@
         {
           "locationWhenInUsePermission": "Aplikasi membutuhkan lokasi Anda untuk menandai titik laporan sampah di peta."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }
