@@ -13,6 +13,7 @@ createdb waste_reports
 createdb waste_reports_test
 npm run db:migrate
 npm run db:seed             # butuh ADMIN_EMAIL dan ADMIN_PASSWORD di .env
+npm run db:seed:demo        # opsional: 4 akun + 10 laporan demo
 npm run dev
 ```
 
@@ -24,6 +25,25 @@ Filter tanggal (`from`/`to`) menerima dua bentuk:
 - Timestamp ISO lengkap (mis. `2026-11-05T10:00:00Z`) diartikan sebagai instant persis.
 
 Zona waktu aplikasi dapat diubah lewat env `APP_TIMEZONE`.
+
+## Data demo dan pembersihan QA
+
+`npm run db:seed:demo` mengisi 4 akun demo dan 10 laporan dengan variasi status, kategori,
+tanggal, dan riwayat. Script idempoten (tidak menduplikasi data) dan menolak berjalan saat
+`NODE_ENV=production`.
+
+| Email                    | Role  |
+| ------------------------ | ----- |
+| `demo.admin@example.com` | admin |
+| `demo.budi@example.com`  | user  |
+| `demo.siti@example.com`  | user  |
+| `demo.dewi@example.com`  | user  |
+
+Password akun demo memakai `DEMO_PASSWORD` (default `demo12345`). Laporan demo tidak memiliki
+foto karena file upload tidak di-commit.
+
+`npm run db:cleanup:qa` menghapus akun/laporan uji dengan pola email `browser.test.*@example.com`,
+`uji.*@example.com`, dan `qa.*@example.com`, termasuk file fotonya. Akun lain tidak disentuh.
 
 ## Model klasifikasi
 

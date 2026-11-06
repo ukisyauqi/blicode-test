@@ -3,13 +3,51 @@
 **Sumber temuan:** `qa/HASIL-PENGUJIAN.md`
 **Tanggal disusun:** 5 November 2026
 **Basis commit:** `c6f05f0` (`main`)
-**Status:** rencana, belum ada perubahan kode
+**Status:** **selesai** — ketiga bug sudah diperbaiki, di-merge, dan terverifikasi
+
+---
+
+## 0. Status Implementasi
+
+Perbaikan dikerjakan di branch `fix/qa-bugs`, di-merge melalui
+[PR #1](https://github.com/ukisyauqi/blicode-test/pull/1) ke `main`, lalu branch lokal dan remote
+dihapus.
+
+| Item | Commit | Keterangan |
+| --- | --- | --- |
+| BUG-01 — `PATCH /api/auth/me` | `fe85dc5` | Route, schema, service, dan 6 tes regresi |
+| BUG-03 — filter tanggal lokal | `83268c1` | `APP_TIMEZONE`, helper `dateRange`, laporan + dashboard, tes batas hari |
+| BUG-02 — reporter & aktor riwayat | `9e85dd5` | Left join `users`, `reporter`, `changedByUser`, tes relasi |
+| Dokumentasi QA | `f9b4db8` | `qa/HASIL-PENGUJIAN.md` dan rencana ini |
+| Perbaikan CI | `6601009` | `JWT_SECRET` di-quote agar tetap string |
+| Merge PR #1 | `571e927` | `main` setelah merge |
+
+**Verifikasi otomatis (lokal):**
+
+- Backend: **59 tes lulus**, `typecheck` dan `lint` bersih, `build` berhasil.
+- Frontend: **36 tes lulus**, `typecheck` dan `lint` bersih.
+- E2E Playwright: **13 tes lulus**.
+- CI `Backend` di `main` hijau (run `42034038078`).
+
+**Verifikasi manual (browser):**
+
+- Ubah nama profil berhasil, persisten setelah reload.
+- Kolom **Pelapor**, bagian **PELAPOR**, dan aktor riwayat menampilkan nama/email.
+- Filter `from=to=<hari ini>` menampilkan laporan hari itu.
+- Dashboard default 30 hari dan periode custom menghitung laporan dengan benar.
+
+**Data demo & pembersihan QA (post-merge):**
+
+- `npm run db:seed:demo` menambahkan 4 akun demo dan 10 laporan lintas status/kategori/tanggal.
+- `npm run db:cleanup:qa` menghapus akun/laporan uji berpola `browser.test.*`, `uji.*`, dan `qa.*`
+  beserta file fotonya.
+- Akun `admin@example.com` dan `uki@example.com` dipertahankan.
 
 ---
 
 ## 1. Ringkasan
 
-Ada 3 bug yang perlu diperbaiki, semuanya terverifikasi lewat browser dan inspection kode:
+Ada 3 bug yang ditemukan, semuanya terverifikasi lewat browser dan inspection kode, dan kini sudah diperbaiki:
 
 | ID | Bug | Dampak | Prioritas | Estimasi |
 | --- | --- | --- | --- | --- |
@@ -28,11 +66,14 @@ Tidak ada perubahan skema database dan tidak ada migrasi. Semua perbaikan bersif
 
 ### Branch & alur kerja
 
+Branch `fix/qa-bugs` sudah dibuat, di-merge, lalu dihapus (lokal dan remote):
+
 ```bash
+# Historis
 git checkout -b fix/qa-bugs
 ```
 
-Urutan pengerjaan yang disarankan: **BUG-01 → BUG-03 → BUG-02**. BUG-01 paling kecil untuk memvalidasi alur, BUG-03 paling berisiko sehingga dikerjakan saat konteks masih segar, BUG-02 terakhir karena menyentuh banyak query.
+Urutan pengerjaan yang dipakai: **BUG-01 → BUG-03 → BUG-02**.
 
 ---
 
@@ -108,9 +149,9 @@ Letakkan setelah `GET /me`. Tidak bentrok dengan `PATCH /me/password` karena Exp
 
 ### Kriteria selesai
 
-- [ ] Klik **Simpan nama** di `/profile` menampilkan toast sukses dan nama di sidebar langsung berubah.
-- [ ] Setelah reload, nama baru tetap ada.
-- [ ] Tes auth lama + 6 tes baru lulus.
+- [x] Klik **Simpan nama** di `/profile` menampilkan toast sukses dan nama di sidebar langsung berubah.
+- [x] Setelah reload, nama baru tetap ada.
+- [x] Tes auth lama + 6 tes baru lulus.
 
 ---
 
@@ -152,13 +193,17 @@ Sketsa:
 ```ts
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
-export type DateBound = { dateOnly: string } | { instant: Date };
+export type DateBound =
+  | { kind: "dateOnly"; dateOnly: string }
+  | { kind: "instant"; instant: Date };
 
 export function parseDateBound(raw: string | undefined): DateBound | undefined {
   if (!raw) return undefined;
-  if (DATE_ONLY.test(raw)) return { dateOnly: raw };
+  if (DATE_ONLY.test(raw)) {
+    return isValidDateOnly(raw) ? { kind: "dateOnly", dateOnly: raw } : undefined;
+  }
   const parsed = new Date(raw);
-  return Number.isNaN(parsed.getTime()) ? undefined : { instant: parsed };
+  return Number.isNaN(parsed.getTime()) ? undefined : { kind: "instant", instant: parsed };
 }
 
 /** Awal hari kalender `YYYY-MM-DD` di zona waktu tertentu, sebagai UTC instant. */
@@ -197,6 +242,10 @@ function timeZoneOffsetMinutes(date: Date, timeZone: string): number {
 }
 ```
 
+Helper final juga menyediakan `isValidDateOnly`, `startOfDayInZone`, `startOfNextDayInZone`,
+`formatDateInZone`, dan `addDaysToDateOnly` agar perhitungan periode dashboard tidak bergantung
+pada aritmetika 24 jam mentah.
+
 > Alternatif tanpa helper: bandingkan di SQL dengan `(created_at AT TIME ZONE $tz)::date >= $from::date`. Lebih singkat, tetapi membuat index `reports_created_at_idx` tidak terpakai. Untuk skala data saat ini masih aman; helper JS dipilih agar query tetap sargable.
 
 ### Perubahan schema
@@ -217,11 +266,13 @@ Validasi format tanggal dipindahkan ke service/helper. Jika tetap ingin validasi
 **`be/src/modules/reports/service.ts`** (fungsi `list`):
 
 ```ts
-const tz = env.APP_TIMEZONE;
+const timeZone = env.APP_TIMEZONE;
 const from = parseDateBound(query.from);
 const to = parseDateBound(query.to);
+const fromDateOnly = from?.kind === "dateOnly" ? from.dateOnly : undefined;
+const toDateOnly = to?.kind === "dateOnly" ? to.dateOnly : undefined;
 
-if (from?.dateOnly && to?.dateOnly && from.dateOnly > to.dateOnly) {
+if (fromDateOnly && toDateOnly && fromDateOnly > toDateOnly) {
   throw unprocessable("Tanggal awal tidak boleh setelah tanggal akhir");
 }
 
@@ -229,14 +280,16 @@ if (from) {
   conditions.push(
     gte(
       reports.createdAt,
-      from.dateOnly ? startOfDayInZone(from.dateOnly, tz) : from.instant,
+      from.kind === "dateOnly"
+        ? startOfDayInZone(from.dateOnly, timeZone)
+        : from.instant,
     ),
   );
 }
 if (to) {
   conditions.push(
-    to.dateOnly
-      ? lt(reports.createdAt, startOfNextDayInZone(to.dateOnly, tz))
+    to.kind === "dateOnly"
+      ? lt(reports.createdAt, startOfNextDayInZone(to.dateOnly, timeZone))
       : lte(reports.createdAt, to.instant),
   );
 }
@@ -247,39 +300,52 @@ Tambahkan `lt` ke import `drizzle-orm`.
 **`be/src/modules/dashboard/service.ts`**:
 
 ```ts
-const tz = env.APP_TIMEZONE;
+const timeZone = env.APP_TIMEZONE;
 const toBound = parseDateBound(query.to);
 const fromBound = parseDateBound(query.from);
+const toDateOnly = toBound?.kind === "dateOnly" ? toBound.dateOnly : undefined;
 
 const to = toBound
-  ? toBound.dateOnly
-    ? startOfNextDayInZone(toBound.dateOnly, tz)   // exclusive
+  ? toBound.kind === "dateOnly"
+    ? startOfNextDayInZone(toBound.dateOnly, timeZone) // exclusive
     : toBound.instant
   : new Date();
 
 const from = fromBound
-  ? fromBound.dateOnly
-    ? startOfDayInZone(fromBound.dateOnly, tz)
+  ? fromBound.kind === "dateOnly"
+    ? startOfDayInZone(fromBound.dateOnly, timeZone)
     : fromBound.instant
-  : startOfDayInZone(formatDateInZone(new Date(to.getTime() - 29 * 86_400_000), tz), tz);
+  : startOfDayInZone(
+      addDaysToDateOnly(toDateOnly ?? formatDateInZone(to, timeZone), -29),
+      timeZone,
+    );
+
+if (from > to) throw unprocessable("Tanggal awal tidak boleh setelah tanggal akhir");
 ```
 
 Lalu:
 
 ```ts
 gte(reports.createdAt, from),
-toBound?.dateOnly ? lt(reports.createdAt, to) : lte(reports.createdAt, to),
+toBound?.kind === "dateOnly" ? lt(reports.createdAt, to) : lte(reports.createdAt, to),
 ```
 
-Default tanpa query harus mencakup **30 hari kalender termasuk hari ini**, bukan 30×24 jam dari detik sekarang.
+Default tanpa query mencakup **30 hari kalender termasuk hari ini**, bukan 30×24 jam dari detik sekarang.
 
-**Tren harian** juga perlu konsisten dengan zona waktu:
+**Tren harian** juga konsisten dengan zona waktu:
 
 ```ts
-const day = sql<string>`to_char(date_trunc('day', ${reports.createdAt} AT TIME ZONE ${tz}), 'YYYY-MM-DD')`;
+const day = sql<string>`to_char(date_trunc('day', ${reports.createdAt} AT TIME ZONE ${timeZone}), 'YYYY-MM-DD')`;
+const trend = db
+  .select({ date: day, count: counts })
+  .from(reports)
+  .where(where)
+  .groupBy(sql`1`)
+  .orderBy(sql`1`);
 ```
 
-Tanpa ini, laporan pukul 00:00–06:59 WIB akan masuk ke tanggal sebelumnya di grafik.
+Tanpa `AT TIME ZONE`, laporan pukul 00:00–06:59 WIB akan masuk ke tanggal sebelumnya di grafik.
+`GROUP BY 1` dipakai karena PostgreSQL menganggap ekspresi `date_trunc` berbeda dari alias select.
 
 ### Tes regresi (`be/tests/status-dashboard.test.ts` dan/atau file baru)
 
@@ -298,12 +364,12 @@ Gunakan `db.update(reports).set({ createdAt })` untuk membuat laporan di batas h
 
 ### Kriteria selesai
 
-- [ ] Filter `to=hari ini` menampilkan laporan yang dibuat hari ini.
-- [ ] Filter `from=to=hari ini` menampilkan laporan hari ini.
-- [ ] Dashboard default 30 hari menghitung laporan hari ini.
-- [ ] Dashboard custom dengan tanggal yang sama mengembalikan data yang sama dengan daftar laporan.
-- [ ] Tes batas tengah malam lulus untuk `Asia/Jakarta`.
-- [ ] Tidak ada regresi pada filter ISO timestamp.
+- [x] Filter `to=hari ini` menampilkan laporan yang dibuat hari ini.
+- [x] Filter `from=to=hari ini` menampilkan laporan hari ini.
+- [x] Dashboard default 30 hari menghitung laporan hari ini.
+- [x] Dashboard custom dengan tanggal yang sama mengembalikan data yang sama dengan daftar laporan.
+- [x] Tes batas tengah malam lulus untuk `Asia/Jakarta`.
+- [x] Tidak ada regresi pada filter ISO timestamp.
 
 ---
 
@@ -451,30 +517,32 @@ Buat `be/tests/reports-relations.test.ts` (atau tambahkan ke `reports-crud.test.
 
 ### Kriteria selesai
 
-- [ ] Kolom **Pelapor** di `/reports` menampilkan nama.
-- [ ] Bagian **PELAPOR** di detail menampilkan nama & email.
-- [ ] Riwayat status menampilkan nama aktor (pelapor/admin), bukan "Pengguna".
-- [ ] Data pelapor tetap tampil meskipun akun sudah di-soft-delete.
-- [ ] Tidak ada perubahan pada aturan akses (user tetap hanya melihat laporannya sendiri).
+- [x] Kolom **Pelapor** di `/reports` menampilkan nama.
+- [x] Bagian **PELAPOR** di detail menampilkan nama & email.
+- [x] Riwayat status menampilkan nama aktor (pelapor/admin), bukan "Pengguna".
+- [x] Data pelapor tetap tampil meskipun akun sudah di-soft-delete.
+- [x] Tidak ada perubahan pada aturan akses (user tetap hanya melihat laporannya sendiri).
 
 ---
 
 ## 5. Urutan Implementasi
 
-| Langkah | Pekerjaan | Output |
-| --- | --- | --- |
-| 1 | Buat branch `fix/qa-bugs` | — |
-| 2 | BUG-01: schema, service, controller, route, tes | Commit `fix(auth): add PATCH /me for profile name update` |
-| 3 | BUG-03: helper `dateRange`, env, reports, dashboard, tes | Commit `fix(reports): treat date-only filters as full local days` |
-| 4 | BUG-02: join reporter & history actor, tes backend + web | Commit `fix(reports): include reporter and history actor in responses` |
-| 5 | Jalankan seluruh tes & QA manual | Laporan verifikasi |
-| 6 | Update `qa/HASIL-PENGUJIAN.md` dengan status perbaikan | Dokumen QA terbaru |
+| Langkah | Pekerjaan | Output | Status |
+| --- | --- | --- | --- |
+| 1 | Buat branch `fix/qa-bugs` | — | ✅ selesai, branch dihapus |
+| 2 | BUG-01: schema, service, controller, route, tes | `fe85dc5` | ✅ |
+| 3 | BUG-03: helper `dateRange`, env, reports, dashboard, tes | `83268c1` | ✅ |
+| 4 | BUG-02: join reporter & history actor, tes backend + web | `9e85dd5` | ✅ |
+| 5 | Jalankan seluruh tes & QA manual | Laporan verifikasi | ✅ |
+| 6 | Update `qa/HASIL-PENGUJIAN.md` dengan status perbaikan | `f9b4db8` | ✅ |
+| 7 | Merge PR #1 dan rapikan branch | `571e927` | ✅ |
+| 8 | Bersihkan data QA + seed demo + dokumentasi | Post-merge | ✅ |
 
 Estimasi total: **±1 hari kerja** termasuk tes dan verifikasi.
 
 ---
 
-## 6. Rencana Verifikasi
+## 6. Verifikasi yang Dijalankan
 
 ### Otomatis
 
@@ -497,7 +565,7 @@ Semua tes backend membutuhkan `TEST_DATABASE_URL` di `be/.env` dan akan men-trun
 
 ### Manual (browser)
 
-Gunakan akun QA yang sudah ada atau akun baru:
+Verifikasi ulang memakai akun demo dari `npm run db:seed:demo`:
 
 | No | Skenario | Ekspektasi |
 | --- | --- | --- |
@@ -548,26 +616,28 @@ Gunakan akun QA yang sudah ada atau akun baru:
 
 ## 9. Definition of Done
 
-- [ ] Ketiga bug tidak bisa direproduksi lagi lewat langkah di `qa/HASIL-PENGUJIAN.md`.
-- [ ] Tes regresi baru ada dan lulus di CI backend.
-- [ ] `npm run typecheck` dan `npm run lint` bersih di `be/` dan `web/`.
-- [ ] E2E frontend lulus.
-- [ ] Dokumentasi `APP_TIMEZONE` ditambahkan ke README backend.
-- [ ] `qa/HASIL-PENGUJIAN.md` diperbarui: status bug menjadi **Fixed** dengan commit hash.
-- [ ] Tidak ada perubahan pada data produksi/development selain data uji QA yang memang sudah ada.
+- [x] Ketiga bug tidak bisa direproduksi lagi lewat langkah di `qa/HASIL-PENGUJIAN.md`.
+- [x] Tes regresi baru ada dan lulus di CI backend.
+- [x] `npm run typecheck` dan `npm run lint` bersih di `be/` dan `web/`.
+- [x] E2E frontend lulus.
+- [x] Dokumentasi `APP_TIMEZONE` ditambahkan ke README backend.
+- [x] `qa/HASIL-PENGUJIAN.md` diperbarui: status bug menjadi **Fixed** dengan commit hash.
+- [x] Tidak ada perubahan pada data produksi/development selain data uji QA (yang kemudian dibersihkan) dan data demo baru.
 
 ---
 
 ## 10. Di Luar Scope
 
-Hal berikut **tidak** dikerjakan dalam rencana ini dan sebaiknya menjadi tiket terpisah:
+Hal berikut **tidak** dikerjakan dalam rencana perbaikan bug ini dan sebaiknya menjadi tiket terpisah:
 
 - Uji pagination halaman 2 dan sorting multi-data (butuh seed data lebih banyak).
 - Uji tombol "Gunakan lokasi saya" (butuh izin geolocation).
 - Uji tampilan mobile/responsif.
-- Penambahan CI untuk `web/` dan `ml/`.
-- Pembersihan akun/laporan uji QA sebelum demo.
+- Workflow CI khusus untuk `web/` dan `ml/` (sudah tersedia pengganti berupa `scripts/check.sh` lokal).
 - Perbaikan infrastruktur deployment dan observability.
+
+Pembersihan akun/laporan uji QA dan penambahan data demo **sudah dikerjakan** setelah PR di-merge
+(lihat bagian 12).
 
 ---
 
@@ -580,13 +650,37 @@ Hal berikut **tidak** dikerjakan dalam rencana ini dan sebaiknya menjadi tiket t
 - fix(reports): sertakan reporter dan changedByUser pada respons
 
 ## Tes
-- [ ] be: npm test
-- [ ] be: npm run typecheck && npm run lint
-- [ ] web: npm run typecheck && npm run lint && npm test
-- [ ] web: npm run e2e
+- [x] be: npm test
+- [x] be: npm run typecheck && npm run lint
+- [x] web: npm run typecheck && npm run lint && npm test
+- [x] web: npm run e2e
 
 ## Catatan
 - Tidak ada migrasi DB.
 - Env baru: APP_TIMEZONE (default Asia/Jakarta).
 - Menutup BUG-01, BUG-02, BUG-03 dari qa/HASIL-PENGUJIAN.md.
 ```
+
+---
+
+## 12. Pekerjaan Lanjutan Setelah Merge
+
+| Pekerjaan | Perintah | Hasil |
+| --- | --- | --- |
+| Hapus data uji QA | `cd be && npm run db:cleanup:qa` | 3 akun, 2 laporan, 1 file foto dihapus |
+| Isi data demo | `cd be && npm run db:seed:demo` | 4 akun demo + 10 laporan |
+| Verifikasi browser | — | Dashboard, daftar laporan, detail, filter tanggal |
+| Dokumentasi | — | README root, README backend, dokumen QA |
+
+Data demo bersifat idempoten: menjalankan `db:seed:demo` berulang kali tidak menduplikasi laporan.
+Script menolak berjalan jika `NODE_ENV=production`. Akun demo memakai password dari
+`DEMO_PASSWORD` (default `demo12345`):
+
+| Email | Role |
+| --- | --- |
+| `demo.admin@example.com` | admin |
+| `demo.budi@example.com` | user |
+| `demo.siti@example.com` | user |
+| `demo.dewi@example.com` | user |
+
+Akun `admin@example.com` dan `uki@example.com` tidak disentuh oleh cleanup.

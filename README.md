@@ -136,7 +136,7 @@ model.
 │   ├── src/
 │   │   ├── modules/             # auth, reports, users, dashboard
 │   │   ├── ml/                  # classifier ONNX + preprocessing
-│   │   ├── db/                  # schema, koneksi, seed
+│   │   ├── db/                  # schema, koneksi, seed admin, seed demo, cleanup QA
 │   │   └── middleware/
 │   ├── tests/
 │   └── README.md                # Setup dan ringkasan API
@@ -148,7 +148,9 @@ model.
 │   │   └── lib/                 # API client, konstanta, util
 │   ├── e2e/                     # Playwright + mock API
 │   └── PLAN.md                  # Rencana dan aturan frontend
-├── .github/workflows/be.yml     # CI backend
+├── qa/                          # Laporan pengujian dan rencana perbaikan
+├── scripts/check.sh             # CI lokal (backend + frontend, opsional ML/E2E)
+├── .github/workflows/be.yml     # CI backend (opsional)
 └── README.md
 ```
 
@@ -218,6 +220,7 @@ createdb waste_reports_test
 cp ../ml/models/best.onnx models/best.onnx
 npm run db:migrate
 npm run db:seed
+npm run db:seed:demo   # opsional: 4 akun + 10 laporan demo
 npm run dev
 ```
 
@@ -243,6 +246,33 @@ npm run dev
 Buka `http://localhost:5173`. Akun admin dibuat dari `ADMIN_EMAIL` dan `ADMIN_PASSWORD` saat
 `npm run db:seed`; pengguna biasa dapat mendaftar sendiri lewat halaman registrasi.
 
+### 5. Data demo (opsional)
+
+Untuk demo atau pengujian manual, isi database dengan akun dan laporan contoh:
+
+```bash
+cd be
+npm run db:seed:demo
+```
+
+Script ini membuat **4 akun demo** dan **10 laporan** dengan variasi status, kategori, tanggal,
+dan riwayat status. Seed bersifat idempoten, jadi aman dijalankan berulang kali. Password akun
+demo diambil dari env `DEMO_PASSWORD` (default `demo12345`).
+
+| Email                    | Role  | Nama         |
+| ------------------------ | ----- | ------------ |
+| `demo.admin@example.com` | admin | Rina Admin   |
+| `demo.budi@example.com`  | user  | Budi Santoso |
+| `demo.siti@example.com`  | user  | Siti Rahma   |
+| `demo.dewi@example.com`  | user  | Dewi Lestari |
+
+Seed demo menolak berjalan jika `NODE_ENV=production`. Untuk membersihkan akun/laporan uji QA
+berpola `browser.test.*`, `uji.*`, dan `qa.*` beserta file fotonya:
+
+```bash
+npm run db:cleanup:qa
+```
+
 ---
 
 ## Konfigurasi Environment
@@ -265,6 +295,7 @@ Buka `http://localhost:5173`. Akun admin dibuat dari `ADMIN_EMAIL` dan `ADMIN_PA
 | `ADMIN_NAME`         | Tidak      | `Admin`                 | Nama akun admin saat seed                |
 | `ADMIN_EMAIL`        | Untuk seed | —                       | Email admin                              |
 | `ADMIN_PASSWORD`     | Untuk seed | —                       | Password admin, minimal 8 karakter       |
+| `DEMO_PASSWORD`      | Tidak      | `demo12345`             | Password akun demo (`db:seed:demo`)      |
 
 ### Frontend (`web/.env`)
 
@@ -294,17 +325,19 @@ deployment frontend.
 
 ### Backend (`be/`)
 
-| Perintah              | Fungsi                                     |
-| --------------------- | ------------------------------------------ |
-| `npm run dev`         | Jalankan server dengan watch mode          |
-| `npm test`            | Jalankan tes (memakai `TEST_DATABASE_URL`) |
-| `npm run typecheck`   | Pemeriksaan tipe TypeScript                |
-| `npm run lint`        | ESLint                                     |
-| `npm run build`       | Compile ke `dist/`                         |
-| `npm start`           | Jalankan hasil build                       |
-| `npm run db:generate` | Generate migrasi Drizzle                   |
-| `npm run db:migrate`  | Terapkan migrasi                           |
-| `npm run db:seed`     | Buat akun admin awal                       |
+| Perintah               | Fungsi                                     |
+| ---------------------- | ------------------------------------------ |
+| `npm run dev`          | Jalankan server dengan watch mode          |
+| `npm test`             | Jalankan tes (memakai `TEST_DATABASE_URL`) |
+| `npm run typecheck`    | Pemeriksaan tipe TypeScript                |
+| `npm run lint`         | ESLint                                     |
+| `npm run build`        | Compile ke `dist/`                         |
+| `npm start`            | Jalankan hasil build                       |
+| `npm run db:generate`  | Generate migrasi Drizzle                   |
+| `npm run db:migrate`   | Terapkan migrasi                           |
+| `npm run db:seed`      | Buat akun admin awal                       |
+| `npm run db:seed:demo` | Isi 4 akun & 10 laporan demo (idempoten)   |
+| `npm run db:cleanup:qa`| Hapus akun/laporan uji QA beserta fotonya  |
 
 > Tes backend menjalankan migrasi dan **mengosongkan tabel** di database tes. Jangan arahkan
 > `TEST_DATABASE_URL` ke database development atau produksi.
@@ -416,12 +449,42 @@ body, dan aturan bisnis ada di [`be/README.md`](be/README.md) dan [`be/PLAN.md`]
 
 ## CI
 
+Ada dua cara menjalankan pemeriksaan kualitas, dan keduanya memakai perintah yang sama.
+
+### CI lokal (didukung penuh)
+
+Seluruh pemeriksaan bisa dijalankan tanpa GitHub Actions. Dari root repository:
+
+```bash
+./scripts/check.sh          # backend + frontend
+RUN_ML=1 ./scripts/check.sh # tambah ruff + pytest ML
+RUN_E2E=1 ./scripts/check.sh # tambah E2E Playwright
+```
+
+Script menjalankan `lint`, `typecheck`, `test`, dan `build` untuk backend dan frontend. Backend
+memakai `TEST_DATABASE_URL` dari `be/.env`; pastikan database tes sudah dibuat dan **jangan**
+mengarahkannya ke database development/produksi.
+
+Perintah manual yang setara:
+
+```bash
+cd be && npm run lint && npm run typecheck && npm test && npm run build
+cd web && npm run lint && npm run typecheck && npm test && npm run build
+```
+
+### GitHub Actions (opsional)
+
 Workflow [`Backend`](.github/workflows/be.yml) berjalan pada push/PR yang menyentuh `be/`:
 
 - PostgreSQL 16 sebagai service.
 - `npm ci`, lint, typecheck, test, dan build.
 
-Saat ini belum ada workflow CI untuk `ml/` dan `web/`; keduanya dijalankan secara lokal.
+Workflow ini tidak wajib. Jika ingin sepenuhnya lokal, cukup andalkan `scripts/check.sh` dan
+hapus/nonaktifkan workflow. Repository ini publik, sehingga runner standar GitHub Actions tidak
+memakan biaya; membiarkannya aktif tetap berguna sebagai pengaman saat push ke remote.
+
+Saat ini belum ada workflow CI untuk `ml/` dan `web/`; gunakan `RUN_ML=1`/`RUN_E2E=1` pada
+`scripts/check.sh` untuk memeriksanya secara lokal.
 
 ---
 

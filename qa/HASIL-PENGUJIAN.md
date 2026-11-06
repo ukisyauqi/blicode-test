@@ -211,7 +211,7 @@ Catatan perilaku tanggal: `to=YYYY-MM-DD` kini berarti `< awal hari berikutnya` 
 
 ## Data Uji yang Dibuat
 
-### Akun admin uji (masih aktif)
+### Akun admin uji (sudah dibersihkan)
 
 | Field    | Nilai                                    |
 | -------- | ---------------------------------------- |
@@ -219,26 +219,30 @@ Catatan perilaku tanggal: `to=YYYY-MM-DD` kini berarti `< awal hari berikutnya` 
 | Password | `password456`                            |
 | Role     | `admin`                                  |
 
-> Akun ini hanya untuk pengujian lokal. Jangan dipakai di lingkungan produksi.
+> Akun ini dan seluruh data uji QA sudah dihapus pada 6 November 2026 memakai
+> `npm run db:cleanup:qa`. Jangan membuat akun uji dengan pola email tersebut di produksi.
 
-### Data lain
+### Data demo pengganti
 
-| Data                                                | Status                                              |
-| --------------------------------------------------- | --------------------------------------------------- |
-| Laporan "Tumpukan sampah plastik di Monas (diedit)" | Tampil, status **Selesai**, memiliki foto & riwayat |
-| Laporan "Laporan uji penolakan"                     | Sudah dihapus (soft delete)                         |
-| User "Uji Hapus"                                    | Sudah dihapus (soft delete)                         |
-| User "Uji Edit"                                     | Sudah dihapus (soft delete)                         |
-| Admin asli `admin@example.com`                      | Tetap ada                                           |
-| User `uki@example.com`                              | Tetap ada                                           |
+Setelah pembersihan, database development diisi data demo lewat `npm run db:seed:demo`:
 
-Setelah pengujian, data yang terlihat di aplikasi: **3 user** (Admin, Browser Test, uki) dan **1 laporan**.
+| Data | Jumlah / Status |
+| --- | --- |
+| Akun demo | 4 (`demo.admin`, `demo.budi`, `demo.siti`, `demo.dewi`) |
+| Laporan demo | 10 (4 menunggu, 2 diproses, 3 selesai, 1 ditolak) |
+| Riwayat status | 19 baris |
+| Foto laporan demo | Tidak ada (file upload tidak di-commit) |
+| Admin asli `admin@example.com` | Tetap ada |
+| User `uki@example.com` | Tetap ada |
+
+Password akun demo default `demo12345` (dapat diubah lewat `DEMO_PASSWORD`). Script seed bersifat
+idempoten dan menolak berjalan saat `NODE_ENV=production`.
 
 ---
 
 ## Batasan Pengujian
 
-- Pagination halaman 2 dan sorting multi-data belum teruji karena hanya tersisa 1 laporan setelah pembersihan.
+- Pagination halaman 2 dan sorting multi-data belum teruji saat QA karena hanya tersisa 1 laporan setelah pembersihan. Data demo sekarang berisi 10 laporan, sehingga skenario ini bisa diuji ulang.
 - Tombol **"Gunakan lokasi saya"** belum diuji karena memerlukan izin geolocation; pemilihan lokasi lewat klik peta sudah teruji.
 - Tampilan mobile/responsif belum diuji karena tool browser tidak menyediakan pengaturan viewport.
 - Snapshot aksesibilitas browser tidak menghasilkan `ref`, sehingga interaksi dilakukan melalui DOM API pada halaman asli. Semua perubahan tetap melewati UI, React state, dan API backend yang sebenarnya.
@@ -248,13 +252,15 @@ Setelah pengujian, data yang terlihat di aplikasi: **3 user** (Admin, Browser Te
 ## Rekomendasi
 
 1. ✅ Perbaiki **BUG-01**, **BUG-02**, dan **BUG-03** beserta tes regresinya (lihat **Status Perbaikan**).
-2. Tambahkan tes backend untuk:
+2. ✅ Tambahkan tes backend untuk:
    - `PATCH /api/auth/me`
    - join pelapor pada daftar/detail laporan
    - join aktor pada riwayat status
    - inklusivitas tanggal `to`
-3. Tambahkan CI untuk `web/` dan `ml/` (saat ini CI hanya backend).
-4. Bersihkan akun dan laporan uji sebelum demo/deploy.
+3. ✅ Sediakan `scripts/check.sh` untuk CI lokal backend + frontend (opsional ML/E2E). Workflow
+   GitHub Actions tetap hanya backend.
+4. ✅ Bersihkan akun dan laporan uji sebelum demo/deploy, lalu isi data demo dengan
+   `npm run db:seed:demo`.
 
 ---
 
