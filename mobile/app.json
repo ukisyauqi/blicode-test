@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Lapor Sampah",
+    "slug": "lapor-sampah",
+    "scheme": "lapor-sampah",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Aplikasi membutuhkan akses galeri untuk melampirkan foto laporan sampah.",
+          "cameraPermission": "Aplikasi membutuhkan akses kamera untuk memotret sampah yang akan dilaporkan."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Aplikasi membutuhkan lokasi Anda untuk menandai titik laporan sampah di peta."
+        }
+      ]
+    ]
+  }
+}
