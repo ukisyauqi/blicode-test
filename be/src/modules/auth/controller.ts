@@ -12,12 +12,14 @@ const cookieOptions = {
 
 export async function register(req: Request, res: Response) {
   const user = await service.register(req.body);
-  res.cookie("token", service.issueToken(user), cookieOptions).status(201).json({ data: user });
+  const token = service.issueToken(user);
+  res.cookie("token", token, cookieOptions).status(201).json({ data: user, token });
 }
 
 export async function login(req: Request, res: Response) {
   const user = await service.login(req.body);
-  res.cookie("token", service.issueToken(user), cookieOptions).json({ data: user });
+  const token = service.issueToken(user);
+  res.cookie("token", token, cookieOptions).json({ data: user, token });
 }
 
 export function logout(_req: Request, res: Response) {

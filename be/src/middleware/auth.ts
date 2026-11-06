@@ -21,7 +21,9 @@ declare module "express-serve-static-core" {
 }
 
 export async function authenticate(req: Request, _res: Response, next: NextFunction) {
-  const token = req.cookies?.token;
+  // Mobile tidak bisa baca cookie httpOnly, jadi terima Bearer juga.
+  const token =
+    req.headers.authorization?.match(/^Bearer (.+)$/)?.[1] ?? req.cookies?.token;
   if (!token) return next(unauthorized());
 
   let sub: string;

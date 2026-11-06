@@ -80,6 +80,25 @@ describe("auth", () => {
     expect(response.body.data).toMatchObject({ email: "ani@example.com", role: "user" });
   });
 
+  it("login mengembalikan token dan me bisa diakses via Bearer (mobile)", async () => {
+    const body = { name: "Ani", email: "ani@example.com", password: "password123" };
+    const register = await request(app).post("/api/auth/register").send(body);
+    expect(register.status).toBe(201);
+    expect(typeof register.body.token).toBe("string");
+
+    const login = await request(app)
+      .post("/api/auth/login")
+      .send({ email: body.email, password: body.password });
+    expect(login.status).toBe(200);
+    expect(typeof login.body.token).toBe("string");
+
+    const me = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${login.body.token}`);
+    expect(me.status).toBe(200);
+    expect(me.body.data).toMatchObject({ email: "ani@example.com", role: "user" });
+  });
+
   it("ganti password lalu login dengan password baru", async () => {
     const register = await request(app)
       .post("/api/auth/register")
