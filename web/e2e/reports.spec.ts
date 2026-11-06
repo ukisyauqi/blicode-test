@@ -6,31 +6,40 @@ test("membuat laporan dengan foto dan kategori otomatis", async ({ page, mockSta
   await loginAs(page, "budi@example.com");
   await page.goto("/reports/new");
 
-  await page.getByLabel("Judul laporan").fill("Sampah plastik di depan sekolah");
   await page
     .getByLabel("Deskripsi")
-    .fill("Tumpukan botol plastik menutupi sebagian trotoar di depan sekolah dasar.");
+    .fill("Tumpukan botol plastik di depan sekolah dasar.");
 
   await page.locator('input[type="file"]').setInputFiles("e2e/fixtures/sample.png");
   await expect(page.getByText(/Kategori otomatis: Plastik \(87%\)/)).toBeVisible();
-  await expect(page.getByRole("radio", { name: /Plastik/ })).toHaveAttribute(
-    "aria-checked",
-    "true",
-  );
 
   await page.getByRole("button", { name: "Kirim laporan" }).click();
   await expect(page).toHaveURL(/\/reports\/report-4$/);
   await expect(
-    page.getByRole("heading", { name: "Sampah plastik di depan sekolah" }),
+    page.getByRole("heading", { name: "Tumpukan botol plastik di depan sekolah dasar." }),
   ).toBeVisible();
   await expect(page.getByText("Menunggu").first()).toBeVisible();
 
   const created = mockState.reports.find((report) => report.id === "report-4");
-  expect(created?.title).toBe("Sampah plastik di depan sekolah");
+  expect(created?.title).toBe("Tumpukan botol plastik di depan sekolah dasar.");
   expect(created?.category).toBe("plastic");
   expect(created?.photoUrl).not.toBeNull();
 });
 
+test("menu aktif tidak ganda di halaman buat laporan", async ({ page }) => {
+  await loginAs(page, "budi@example.com");
+  await page.goto("/reports/new");
+
+  const nav = page.getByRole("navigation", { name: "Navigasi utama" });
+  await expect(nav.getByRole("link", { name: "Buat Laporan" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await expect(nav.getByRole("link", { name: "Laporan", exact: true })).not.toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+});
 test("filter status dan pencarian tersimpan di URL", async ({ page }) => {
   await loginAs(page, "budi@example.com");
   await page.goto("/reports");

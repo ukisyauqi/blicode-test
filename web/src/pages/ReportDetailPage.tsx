@@ -171,10 +171,10 @@ export function ReportDetailPage() {
               {reporter.name}
             </span>
           )}
-          {report.address && (
+          {(report.address || report.postalCode) && (
             <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
               <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-              {report.address}
+              {[report.address, report.postalCode].filter(Boolean).join(" ")}
             </span>
           )}
         </div>
@@ -321,8 +321,10 @@ export function ReportDetailPage() {
                   label="Koordinat"
                 >
                   {formatCoordinates(report.latitude, report.longitude)}
-                  {report.address && (
-                    <span className="mt-1 block text-xs text-slate-500">{report.address}</span>
+                  {(report.address || report.postalCode) && (
+                    <span className="mt-1 block text-xs text-slate-500">
+                      {[report.address, report.postalCode].filter(Boolean).join(" ")}
+                    </span>
                   )}
                 </DetailRow>
               </dl>

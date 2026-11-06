@@ -102,7 +102,10 @@ function normalizeLocations(raw: unknown): DashboardLocationPoint[] {
       const latitudeValue = record.latitude ?? record.lat ?? nested.latitude ?? nested.lat;
       const longitudeValue = record.longitude ?? record.lng ?? nested.longitude ?? nested.lng;
       const addressValue = record.address ?? nested.address ?? record.label;
+      const postalValue =
+        record.postalCode ?? record.postal_code ?? record.postcode ?? nested.postalCode;
       return {
+        postalCode: typeof postalValue === "string" && postalValue.trim() ? postalValue.trim() : null,
         latitude: latitudeValue === undefined ? null : toNumber(latitudeValue),
         longitude: longitudeValue === undefined ? null : toNumber(longitudeValue),
         address: typeof addressValue === "string" ? addressValue : null,

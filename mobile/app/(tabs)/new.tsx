@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
@@ -10,19 +10,38 @@ import { reportSchema } from "../../src/lib/validation";
 import { Btn, Card, Field, Screen, Sub, Title, c } from "../../src/ui";
 import { Ionicons } from "@expo/vector-icons";
 import { MapPicker } from "../../src/components/MapPicker";
-import type { Category, ClassifyResult } from "../../src/types";
+import type { ClassifyResult } from "../../src/types";
 
 const isWeb = Platform.OS === "web";
 
-const CATS: Category[] = ["organic", "plastic", "paper"];
+function titleFromDescription(description: string): string {
+  return description.trim().replace(/\s+/g, " ").slice(0, 60);
+}
+
+/** Nama daerah/kota dari koordinat, diam-diam. Gagal -> kosong, submit tetap jalan. */
+async function resolveLocation(lat: number, lng: number): Promise<{ address?: string; postalCode?: string }> {
+  try {
+    const [place] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+    if (!place) return {};
+    const street = [place.street, place.streetNumber].filter(Boolean).join(" ");
+    const parts = [street || place.name, place.district, place.city || place.subregion, place.region]
+      .map((part) => part?.trim())
+      .filter((part): part is string => Boolean(part));
+    const unique = [...new Set(parts)];
+    const result: { address?: string; postalCode?: string } = {};
+    if (unique.length > 0) result.address = unique.join(", ");
+    const postalCode = place.postalCode?.trim();
+    if (postalCode) result.postalCode = postalCode;
+    return result;
+  } catch {
+    return {};
+  }
+}
 
 export default function NewReport() {
   const router = useRouter();
   const qc = useQueryClient();
-  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState<Category | "">("");
-  const [address, setAddress] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [lat, setLat] = useState(-6.2);
   const [lng, setLng] = useState(106.8);
@@ -41,10 +60,9 @@ export default function NewReport() {
       const r = await api<ClassifyResult>("/reports/classify", { method: "POST", form: await photoForm(uri, "file") });
       if (latest.current !== uri) return;
       setPred(r.data);
-      setCategory((prev) => prev || r.data.category);
     } catch (e) {
       if (latest.current !== uri) return;
-      setClassifyErr(e instanceof ApiError ? e.message : "Deteksi AI gagal — pilih kategori manual");
+      setClassifyErr(e instanceof Error ? e.message : "Deteksi AI gagal — coba kirim ulang");
     } finally {
       if (latest.current === uri) setClassifying(false);
     }
@@ -84,19 +102,24 @@ export default function NewReport() {
   }
 
   async function submit() {
-    const v = reportSchema.safeParse({ title, description, latitude: lat, longitude: lng });
+    const v = reportSchema.safeParse({ description, latitude: lat, longitude: lng });
     if (!v.success) return setErr(v.error.issues[0]?.message ?? "Input tidak valid");
-    if (!photoUri && !category) return setErr("Tambahkan foto atau pilih kategori manual");
+    if (!photoUri) return setErr("Foto wajib diunggah untuk membuat laporan");
+    if (classifying) return setErr("Tunggu hasil deteksi kategori dari foto sebelum mengirim");
+    // Catatan: kalau deteksi client gagal (mis. jaringan putus sesaat),
+    // tetap lanjut — backend mengklasifikasi ulang foto saat submit.
     setSending(true);
     setErr(null);
     try {
+      const location = await resolveLocation(lat, lng);
       const form = photoUri ? await photoForm(photoUri, "photo") : new FormData();
-      form.append("title", title.trim());
+      form.append("title", titleFromDescription(description));
       form.append("description", description.trim());
       form.append("latitude", String(lat));
       form.append("longitude", String(lng));
-      if (address.trim()) form.append("address", address.trim());
-      if (category) form.append("category", category);
+      if (location.address) form.append("address", location.address);
+      if (location.postalCode) form.append("postalCode", location.postalCode);
+      if (pred) form.append("category", pred.category);
       const r = await api<{ id: string }>("/reports", { method: "POST", form });
       qc.invalidateQueries({ queryKey: ["stats"] });
       router.replace(`/report/${r.data.id}`);
@@ -109,11 +132,11 @@ export default function NewReport() {
 
   return (
     <Screen>
-      <ScrollView>
+      <ScrollView contentContainerStyle={s.scrollContent}>
         <Title>Laporan Baru</Title>
         <Sub>Foto, lokasi, dan deskripsi — AI membantu kategorinya.</Sub>
         <Card>
-          <Text style={s.sec}>📷 Foto</Text>
+          <Text style={s.sec}>📷 Foto <Text style={s.req}>*</Text></Text>
           {photoUri ? (
             <Image source={{ uri: photoUri }} style={s.preview} />
           ) : (
@@ -132,27 +155,15 @@ export default function NewReport() {
           <View style={s.ai}>
             <Ionicons name="sparkles" size={18} color={c.primaryDeep} />
             <Text style={s.aiText}>
-              Deteksi AI: {CATEGORY_LABEL[pred.category]} ({Math.round(pred.confidence * 100)}%)
+              Kategori: {CATEGORY_LABEL[pred.category]} ({Math.round(pred.confidence * 100)}%)
             </Text>
           </View>
-        ) : null}
-        {pred?.needsReview ? (
-          <Text style={s.warn}>Keyakinan rendah — periksa kategori sebelum kirim.</Text>
         ) : null}
         {classifyErr ? <Text style={s.warn}>{classifyErr}</Text> : null}
         </Card>
         <Card>
-        <Text style={s.sec}>📝 Detail</Text>
-        <Field label="Judul" value={title} onChangeText={setTitle} placeholder="cth. Tumpukan sampah pasar" />
+        <Text style={s.sec}>📝 Deskripsi</Text>
         <Field label="Deskripsi" value={description} onChangeText={setDescription} multiline placeholder="Ciri, lokasi patokan, ..." />
-        <Text style={s.label}>Kategori</Text>
-        <View style={s.row}>
-          {CATS.map((k) => (
-            <Pressable key={k} onPress={() => setCategory(k)} style={[s.cat, category === k && s.catOn]}>
-              <Text style={category === k ? s.catTextOn : s.catText}>{CATEGORY_LABEL[k]}</Text>
-            </Pressable>
-          ))}
-        </View>
         </Card>
         <Card>
         <Text style={s.sec}>📍 Titik lokasi</Text>
@@ -161,7 +172,6 @@ export default function NewReport() {
           {lat.toFixed(6)}, {lng.toFixed(6)}
         </Text>
         <Btn label="Gunakan lokasi saya" tone="plain" onPress={useMyLocation} />
-        <Field label="Alamat (opsional)" value={address} onChangeText={setAddress} placeholder="cth. Jl. Mawar No. 10" />
         </Card>
         {err ? <Text style={{ color: "#b91c1c", marginBottom: 8 }}>{err}</Text> : null}
         <Btn label={sending ? "Mengirim..." : "Kirim laporan"} onPress={submit} disabled={sending || classifying} />
@@ -171,10 +181,12 @@ export default function NewReport() {
 }
 
 const s = StyleSheet.create({
+  scrollContent: { paddingHorizontal: 2, paddingTop: 2, paddingBottom: 16 },
   preview: { width: "100%", height: 200, borderRadius: 12, marginBottom: 8 },
   previewEmpty: { backgroundColor: c.bg, alignItems: "center", justifyContent: "center", gap: 6 },
   row: { flexDirection: "row", gap: 8, marginBottom: 8, flexWrap: "wrap" },
   sec: { fontSize: 16, fontWeight: "800", color: c.ink, marginBottom: 10 },
+  req: { color: "#b91c1c" },
   info: { color: c.primary, marginBottom: 4, fontWeight: "600" },
   ai: {
     flexDirection: "row",
@@ -187,17 +199,5 @@ const s = StyleSheet.create({
   },
   aiText: { color: c.primaryDeep, fontWeight: "700" },
   warn: { backgroundColor: c.warnBg, color: c.warnFg, padding: 10, borderRadius: 12, marginBottom: 8 },
-  label: { fontSize: 14, fontWeight: "700", color: c.ink, marginBottom: 6 },
-  cat: {
-    borderWidth: 1,
-    borderColor: c.line,
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    backgroundColor: c.white,
-  },
-  catOn: { backgroundColor: c.primary, borderColor: c.primary },
-  catText: { color: c.ink, fontWeight: "600" },
-  catTextOn: { color: c.white, fontWeight: "700" },
   coords: { color: c.sub, fontSize: 13, marginBottom: 6, fontWeight: "600" },
 });

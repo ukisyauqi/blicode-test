@@ -44,6 +44,7 @@ type DemoReport = {
   category: Category;
   status: Status;
   address: string;
+  postalCode: string;
   latitude: number;
   longitude: number;
   hoursAgo: number;
@@ -89,6 +90,7 @@ const demoReports: DemoReport[] = [
     category: "plastic",
     status: "completed",
     address: "Halte TransJakarta Bundaran HI, Jakarta Pusat",
+    postalCode: "10350",
     latitude: -6.1944,
     longitude: 106.8229,
     hoursAgo: 12 * 24,
@@ -104,6 +106,7 @@ const demoReports: DemoReport[] = [
     category: "organic",
     status: "completed",
     address: "Pasar Tanah Abang Blok A, Jakarta Pusat",
+    postalCode: "10250",
     latitude: -6.1856,
     longitude: 106.8119,
     hoursAgo: 10 * 24,
@@ -119,6 +122,7 @@ const demoReports: DemoReport[] = [
     category: "paper",
     status: "completed",
     address: "Jl. Jenderal Sudirman, Jakarta Pusat",
+    postalCode: "10220",
     latitude: -6.2088,
     longitude: 106.8211,
     hoursAgo: 8 * 24,
@@ -134,6 +138,7 @@ const demoReports: DemoReport[] = [
     category: "plastic",
     status: "in_progress",
     address: "Taman Suropati, Jakarta Pusat",
+    postalCode: "10310",
     latitude: -6.1994,
     longitude: 106.8331,
     hoursAgo: 6 * 24,
@@ -149,6 +154,7 @@ const demoReports: DemoReport[] = [
     category: "paper",
     status: "in_progress",
     address: "Stasiun Gondangdia, Jakarta Pusat",
+    postalCode: "10340",
     latitude: -6.1857,
     longitude: 106.8326,
     hoursAgo: 5 * 24,
@@ -164,6 +170,7 @@ const demoReports: DemoReport[] = [
     category: "organic",
     status: "pending",
     address: "Kantin kampus, Jl. Salemba Raya, Jakarta Pusat",
+    postalCode: "10270",
     latitude: -6.225,
     longitude: 106.8,
     hoursAgo: 4 * 24,
@@ -177,6 +184,7 @@ const demoReports: DemoReport[] = [
     category: "plastic",
     status: "pending",
     address: "Jl. Kebon Sirih, Jakarta Pusat",
+    postalCode: "10110",
     latitude: -6.182,
     longitude: 106.832,
     hoursAgo: 3 * 24,
@@ -189,6 +197,7 @@ const demoReports: DemoReport[] = [
     category: "organic",
     status: "rejected",
     address: "Taman Menteng, Jakarta Pusat",
+    postalCode: "10350",
     latitude: -6.195,
     longitude: 106.833,
     hoursAgo: 2 * 24,
@@ -204,6 +213,7 @@ const demoReports: DemoReport[] = [
     category: "paper",
     status: "pending",
     address: "Halte Bus Kota, Jl. Thamrin, Jakarta Pusat",
+    postalCode: "10110",
     latitude: -6.175,
     longitude: 106.827,
     hoursAgo: 1 * 24,
@@ -217,6 +227,7 @@ const demoReports: DemoReport[] = [
     category: "plastic",
     status: "pending",
     address: "Jl. Wahid Hasyim, Jakarta Pusat",
+    postalCode: "10350",
     latitude: -6.19,
     longitude: 106.83,
     hoursAgo: 0,
@@ -301,6 +312,7 @@ try {
         description: report.description,
         category: report.category,
         address: report.address,
+        postalCode: report.postalCode,
         latitude: report.latitude,
         longitude: report.longitude,
         predictedCategory: report.predictedCategory ?? null,

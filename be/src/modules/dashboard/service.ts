@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, isNull, lt, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, isNull, lt, lte, sql } from "drizzle-orm";
 
 import { env } from "../../config/env.js";
 import { db } from "../../db/index.js";
@@ -57,8 +57,10 @@ export async function stats(user: AuthUser, query: StatsQuery) {
   const where = and(...conditions);
 
   const day = sql<string>`to_char(date_trunc('day', ${reports.createdAt} AT TIME ZONE ${timeZone}), 'YYYY-MM-DD')`;
-  const latitude = sql<number>`round(${reports.latitude}, 3)`;
-  const longitude = sql<number>`round(${reports.longitude}, 3)`;
+  const address = sql<string | null>`max(${reports.address})`;
+  const postalCode = sql<string | null>`max(${reports.postalCode})`;
+  const latitude = sql<number>`round(avg(${reports.latitude}), 3)`;
+  const longitude = sql<number>`round(avg(${reports.longitude}), 3)`;
 
   const [byStatus, byCategory, trend, topLocations] = await Promise.all([
     db
@@ -78,10 +80,10 @@ export async function stats(user: AuthUser, query: StatsQuery) {
       .groupBy(sql`1`)
       .orderBy(sql`1`),
     db
-      .select({ latitude, longitude, count: counts })
+      .select({ postalCode: reports.postalCode, address, latitude, longitude, count: counts })
       .from(reports)
-      .where(where)
-      .groupBy(latitude, longitude)
+      .where(where ? and(where, isNotNull(reports.postalCode)) : isNotNull(reports.postalCode))
+      .groupBy(reports.postalCode)
       .orderBy(desc(counts))
       .limit(5),
   ]);
@@ -101,6 +103,8 @@ export async function stats(user: AuthUser, query: StatsQuery) {
     byCategory,
     trend,
     topLocations: topLocations.map((row) => ({
+      postalCode: row.postalCode ?? null,
+      address: row.address ?? null,
       latitude: Number(row.latitude),
       longitude: Number(row.longitude),
       count: row.count,

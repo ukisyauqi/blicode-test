@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { changePasswordSchema, loginSchema, registerSchema } from "@/features/auth/schemas";
-import { reportSchema } from "@/features/reports/schemas";
+import { reportSchema, titleFromDescription } from "@/features/reports/schemas";
 
 describe("loginSchema", () => {
   it("menerima email dan password valid", () => {
@@ -59,9 +59,8 @@ describe("changePasswordSchema", () => {
 });
 
 describe("reportSchema", () => {
-  it("menerima kategori opsional saat ada foto", () => {
+  it("menerima deskripsi + koordinat tanpa judul dan kategori", () => {
     const result = reportSchema.safeParse({
-      title: "Sampah plastik",
       description: "Tumpukan sampah plastik di pinggir jalan",
       latitude: -6.2,
       longitude: 106.8,
@@ -69,9 +68,14 @@ describe("reportSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("membuat judul otomatis dari deskripsi", () => {
+    expect(titleFromDescription("  Tumpukan   sampah plastik di pinggir jalan  ")).toBe(
+      "Tumpukan sampah plastik di pinggir jalan",
+    );
+  });
+
   it("menolak koordinat di luar rentang", () => {
     const result = reportSchema.safeParse({
-      title: "Sampah plastik",
       description: "Tumpukan sampah plastik di pinggir jalan",
       latitude: -91,
       longitude: 200,

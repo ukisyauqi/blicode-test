@@ -105,6 +105,7 @@ export async function apiRequest<T>(
     response = await fetch(url, {
       method,
       credentials: "include",
+      cache: "no-store",
       headers: requestHeaders,
       body: serializeBody(body, requestHeaders),
       signal,

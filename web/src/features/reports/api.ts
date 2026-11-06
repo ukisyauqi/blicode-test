@@ -13,6 +13,7 @@ export type ReportPayload = {
   title: string;
   description: string;
   address?: string;
+  postalCode?: string;
   latitude: number;
   longitude: number;
   category?: ReportCategory;
@@ -31,6 +32,7 @@ function buildReportFormData(input: ReportPayload): FormData {
   formData.set("latitude", String(input.latitude));
   formData.set("longitude", String(input.longitude));
   if (input.address?.trim()) formData.set("address", input.address.trim());
+  if (input.postalCode?.trim()) formData.set("postalCode", input.postalCode.trim());
   if (input.category) formData.set("category", input.category);
   if (input.photo) formData.set("photo", input.photo);
   return formData;

@@ -18,7 +18,9 @@ describe("normalizeDashboardStats", () => {
         { category: "paper", count: 1 },
       ],
       trend: [{ date: "2026-01-01T00:00:00.000Z", count: 3 }],
-      topLocations: [{ latitude: -6.2, longitude: 106.8, address: "Jakarta", count: 4 }],
+      topLocations: [
+        { postalCode: "10310", latitude: -6.2, longitude: 106.8, address: "Jakarta", count: 4 },
+      ],
     });
 
     expect(stats.summary).toEqual({
@@ -32,6 +34,7 @@ describe("normalizeDashboardStats", () => {
     expect(stats.byCategory).toHaveLength(3);
     expect(stats.trend[0]).toEqual({ date: "2026-01-01", count: 3 });
     expect(stats.topLocations[0]?.address).toBe("Jakarta");
+    expect(stats.topLocations[0]?.postalCode).toBe("10310");
   });
 
   it("mendukung bentuk objek dan menghitung total dari status", () => {
@@ -44,6 +47,7 @@ describe("normalizeDashboardStats", () => {
     expect(stats.summary.total).toBe(10);
     expect(stats.summary.completed).toBe(3);
     expect(stats.topLocations[0]).toEqual({
+      postalCode: null,
       latitude: -6.1,
       longitude: 106.7,
       address: "Bandung",

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { subDays } from "date-fns";
 
@@ -26,55 +26,73 @@ function defaultRange(): { from: string; to: string } {
   };
 }
 
+function presetRange(key: "7d" | "30d"): Pick<DashboardPeriod, "from" | "to"> {
+  const today = new Date();
+  if (key === "7d") {
+    return { from: formatDateOnly(subDays(today, 6)), to: formatDateOnly(today) };
+  }
+  return { from: formatDateOnly(subDays(today, 29)), to: formatDateOnly(today) };
+}
+
+function resolvePeriod(
+  params: URLSearchParams,
+  fallback: Pick<DashboardPeriod, "from" | "to">,
+): DashboardPeriod {
+  const rawPeriod = params.get("period") ?? "30d";
+  const key: DashboardPeriodKey =
+    rawPeriod === "7d" || rawPeriod === "custom" ? rawPeriod : "30d";
+  if (key === "7d" || key === "30d") return { key, ...presetRange(key) };
+  const rawFrom = params.get("from") ?? "";
+  const rawTo = params.get("to") ?? "";
+  return {
+    key,
+    from: isDateInput(rawFrom) ? rawFrom : fallback.from,
+    to: isDateInput(rawTo) ? rawTo : fallback.to,
+  };
+}
+
+function samePeriod(a: DashboardPeriod, b: DashboardPeriod): boolean {
+  return a.key === b.key && a.from === b.from && a.to === b.to;
+}
+
 export function useDashboardPeriod() {
   const [params, setParams] = useSearchParams();
   const fallback = useMemo(() => defaultRange(), []);
-  const rawPeriod = params.get("period") ?? "30d";
-  const key: DashboardPeriodKey = rawPeriod === "7d" || rawPeriod === "custom" ? rawPeriod : "30d";
+  const urlPeriod = useMemo(() => resolvePeriod(params, fallback), [params, fallback]);
+  // Optimistic local state so the active preset and range update immediately on click.
+  // React Router's useSearchParams can lag a render behind window.location in some
+  // navigation flows, which previously left the URL and UI out of sync.
+  const [period, setPeriodState] = useState<DashboardPeriod>(urlPeriod);
 
-  const period = useMemo<DashboardPeriod>(() => {
-    const today = new Date();
-    if (key === "7d") {
-      return {
-        key,
-        from: formatDateOnly(subDays(today, 6)),
-        to: formatDateOnly(today),
-      };
-    }
-    if (key === "30d") {
-      return {
-        key,
-        from: formatDateOnly(subDays(today, 29)),
-        to: formatDateOnly(today),
-      };
-    }
-    const rawFrom = params.get("from") ?? "";
-    const rawTo = params.get("to") ?? "";
-    return {
-      key,
-      from: isDateInput(rawFrom) ? rawFrom : fallback.from,
-      to: isDateInput(rawTo) ? rawTo : fallback.to,
-    };
-  }, [fallback, key, params]);
+  useEffect(() => {
+    setPeriodState((current) => (samePeriod(current, urlPeriod) ? current : urlPeriod));
+  }, [urlPeriod]);
 
-  function setPeriod(nextKey: DashboardPeriodKey, nextFrom?: string, nextTo?: string) {
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current);
-        next.set("period", nextKey);
-        if (nextKey === "custom") {
-          const range = defaultRange();
-          next.set("from", isDateInput(nextFrom ?? "") ? (nextFrom as string) : range.from);
-          next.set("to", isDateInput(nextTo ?? "") ? (nextTo as string) : range.to);
-        } else {
-          next.delete("from");
-          next.delete("to");
-        }
-        return next;
-      },
-      { replace: true },
-    );
-  }
+  const setPeriod = useCallback(
+    (nextKey: DashboardPeriodKey, nextFrom?: string, nextTo?: string) => {
+      let next: DashboardPeriod;
+      if (nextKey === "7d" || nextKey === "30d") {
+        next = { key: nextKey, ...presetRange(nextKey) };
+      } else {
+        const range = defaultRange();
+        next = {
+          key: "custom",
+          from: isDateInput(nextFrom ?? "") ? (nextFrom as string) : range.from,
+          to: isDateInput(nextTo ?? "") ? (nextTo as string) : range.to,
+        };
+      }
+      setPeriodState(next);
+
+      const nextParams = new URLSearchParams();
+      nextParams.set("period", nextKey);
+      if (nextKey === "custom") {
+        nextParams.set("from", next.from);
+        nextParams.set("to", next.to);
+      }
+      setParams(nextParams, { replace: true });
+    },
+    [setParams],
+  );
 
   return { period, setPeriod };
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 import { Field, c } from "../ui";
 
 // Fallback web: react-native-maps tidak jalan di browser, jadi koordinat diisi manual.
@@ -31,11 +31,16 @@ export function MapPicker({
     if (t.trim() !== "" && !Number.isNaN(v)) onChange(lat, v);
   }
 
+  const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+
   return (
     <View style={s.box}>
       <Text style={s.note}>Peta tidak tersedia di web — isi koordinat manual atau pakai tombol lokasi.</Text>
       <Field label="Latitude" value={latT} onChangeText={commitLat} keyboardType="numeric" placeholder="-6.2" />
       <Field label="Longitude" value={lngT} onChangeText={commitLng} keyboardType="numeric" placeholder="106.8" />
+      <Text style={s.link} onPress={() => Linking.openURL(mapsUrl)} accessibilityRole="link">
+        Buka di Google Maps
+      </Text>
     </View>
   );
 }
@@ -43,4 +48,5 @@ export function MapPicker({
 const s = StyleSheet.create({
   box: { backgroundColor: c.bg, borderRadius: 10, padding: 12, marginBottom: 4 },
   note: { color: c.sub, fontSize: 13, marginBottom: 8 },
+  link: { color: c.primary, fontWeight: "700", marginTop: 4 },
 });

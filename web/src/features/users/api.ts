@@ -142,7 +142,11 @@ export function useUpdateUserStatus(id: string) {
   return useMutation({
     mutationFn: (isActive: boolean) => updateUserStatus(id, isActive),
     onSuccess: (user) => {
-      queryClient.setQueryData(userKeys.detail(id), user);
+      // Update detail immediately and refetch it to guarantee UI consistency.
+      // api uses cache: "no-store", so refetch won't be overwritten by a stale 304.
+      queryClient.setQueryData(userKeys.detail(user.id), user);
+      if (id && id !== user.id) queryClient.setQueryData(userKeys.detail(id), user);
+      queryClient.invalidateQueries({ queryKey: userKeys.detail(user.id) });
       queryClient.invalidateQueries({ queryKey: ["users", "list"] });
       queryClient.invalidateQueries({ queryKey: userKeys.reporters });
     },

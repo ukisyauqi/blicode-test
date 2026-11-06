@@ -17,11 +17,16 @@ import { Link } from "react-router-dom";
 import { LocationPickerMap } from "@/components/map/ReportMap";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
-import { Input, Textarea } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Input";
 import { ReportPhoto } from "@/components/reports/ReportPhoto";
 import { useToast } from "@/components/ui/toast-context";
 import { useClassifyPhoto, useCreateReport, useUpdateReport } from "@/features/reports/hooks";
-import { reportSchema, type ReportFormValues } from "@/features/reports/schemas";
+import {
+  reportSchema,
+  titleFromDescription,
+  type ReportFormValues,
+} from "@/features/reports/schemas";
+import { reverseGeocode } from "@/features/reports/reverseGeocode";
 import { ApiError } from "@/lib/api";
 import {
   ALLOWED_PHOTO_TYPES,
@@ -30,7 +35,7 @@ import {
   MAX_PHOTO_SIZE,
   REPORT_CATEGORIES,
 } from "@/lib/constants";
-import { cn, formatCategoryWithConfidence, formatPercent, getErrorMessage } from "@/lib/utils";
+import { formatCategoryWithConfidence, formatPercent, getErrorMessage } from "@/lib/utils";
 import type { ClassifyResult, Report, ReportCategory } from "@/types";
 
 type ClassificationState =
@@ -154,10 +159,8 @@ export function ReportForm({
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
-      title: report?.title ?? "",
       description: report?.description ?? "",
       category: report?.category,
-      address: report?.address ?? "",
       latitude: report?.latitude ?? DEFAULT_MAP_CENTER.latitude,
       longitude: report?.longitude ?? DEFAULT_MAP_CENTER.longitude,
     },
@@ -166,7 +169,6 @@ export function ReportForm({
   const { errors } = form.formState;
   const latitude = useWatch({ control: form.control, name: "latitude" });
   const longitude = useWatch({ control: form.control, name: "longitude" });
-  const selectedCategory = useWatch({ control: form.control, name: "category" });
   const mapLatitude = Number.isFinite(latitude) ? latitude : DEFAULT_MAP_CENTER.latitude;
   const mapLongitude = Number.isFinite(longitude) ? longitude : DEFAULT_MAP_CENTER.longitude;
   const classifying = classification.status === "loading";
@@ -276,13 +278,33 @@ export function ReportForm({
 
   async function onSubmit(values: ReportFormValues) {
     form.clearErrors("root");
-    if (!values.category) {
-      form.setError("category", { message: "Pilih kategori sampah" });
+    if (!isEdit && !photo) {
+      setPhotoError("Foto wajib diunggah untuk membuat laporan.");
       return;
     }
+    if (!isEdit && classification.status === "loading") {
+      form.setError("root", {
+        message: "Tunggu hasil deteksi kategori dari foto sebelum mengirim.",
+      });
+      return;
+    }
+    // Catatan: kalau deteksi client gagal, tetap lanjut —
+    // backend mengklasifikasi ulang foto saat submit.
 
     try {
-      const payload = { ...values, category: values.category, photo };
+      const location =
+        !isEdit || values.latitude !== report?.latitude || values.longitude !== report?.longitude
+          ? await reverseGeocode(values.latitude, values.longitude)
+          : { address: report?.address ?? undefined, postalCode: report?.postalCode ?? undefined };
+      const payload = {
+        ...values,
+        title:
+          isEdit && report ? report.title : titleFromDescription(values.description),
+        address: location.address,
+        postalCode: location.postalCode,
+        category: values.category,
+        photo,
+      };
       const saved = isEdit
         ? await updateMutation.mutateAsync(payload)
         : await createMutation.mutateAsync(payload);
@@ -330,14 +352,6 @@ export function ReportForm({
           description="Jelaskan sampah yang ingin dilaporkan dengan jelas."
         />
         <CardContent className="space-y-5">
-          <Input
-            label="Judul laporan"
-            placeholder="Contoh: Tumpukan sampah plastik di pinggir jalan"
-            error={errors.title?.message}
-            required
-            {...form.register("title")}
-          />
-
           <Textarea
             label="Deskripsi"
             placeholder="Ceritakan kondisi sampah, perkiraan jumlah, dan hal lain yang perlu diketahui petugas…"
@@ -349,8 +363,7 @@ export function ReportForm({
 
           <div>
             <p className="mb-2 block text-sm font-medium text-slate-700">
-              Foto sampah
-              <span className="ml-1 text-xs font-normal text-slate-400">(opsional)</span>
+              Foto sampah <span className="text-rose-500">*</span>
             </p>
 
             {(previewUrl || (isEdit && report?.photoUrl)) && (
@@ -415,64 +428,11 @@ export function ReportForm({
             <div className="mt-3">
               <PhotoClassificationPanel
                 classification={classification}
-                category={selectedCategory}
+                category={
+                  classification.status === "success" ? classification.result.category : undefined
+                }
               />
             </div>
-          </div>
-
-          <div>
-            <p className="mb-1.5 block text-sm font-medium text-slate-700">
-              Kategori sampah <span className="text-rose-500">*</span>
-            </p>
-            <p className="mb-2.5 text-xs text-slate-500">
-              Diisi otomatis dari foto dan dapat Anda ubah jika hasilnya kurang tepat.
-            </p>
-            <div
-              role="radiogroup"
-              aria-label="Kategori sampah"
-              className="grid gap-2 sm:grid-cols-3"
-            >
-              {REPORT_CATEGORIES.map((category) => {
-                const meta = CATEGORY_META[category];
-                const active = selectedCategory === category;
-                return (
-                  <button
-                    key={category}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() =>
-                      form.setValue("category", category, {
-                        shouldValidate: true,
-                        shouldDirty: true,
-                      })
-                    }
-                    className={cn(
-                      "flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left text-sm font-semibold transition",
-                      active
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500/20"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
-                    )}
-                  >
-                    <span className="text-lg" aria-hidden="true">
-                      {meta.emoji}
-                    </span>
-                    {meta.label}
-                    {active && (
-                      <CheckCircle2
-                        className="ml-auto h-4 w-4 text-emerald-600"
-                        aria-hidden="true"
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            {errors.category?.message && (
-              <p className="mt-2 text-xs font-medium text-rose-600" role="alert">
-                {errors.category.message}
-              </p>
-            )}
             {isEdit && report?.predictedCategory && (
               <p className="mt-2 text-xs text-slate-500">
                 Prediksi model saat foto diunggah:{" "}
@@ -511,31 +471,6 @@ export function ReportForm({
             latitude={mapLatitude}
             longitude={mapLongitude}
             onChange={setMapLocation}
-          />
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label="Latitude"
-              type="number"
-              step="any"
-              error={errors.latitude?.message}
-              {...form.register("latitude", { valueAsNumber: true })}
-            />
-            <Input
-              label="Longitude"
-              type="number"
-              step="any"
-              error={errors.longitude?.message}
-              {...form.register("longitude", { valueAsNumber: true })}
-            />
-          </div>
-
-          <Input
-            label="Alamat (opsional)"
-            placeholder="Contoh: Jl. Melati, dekat halte bus"
-            error={errors.address?.message}
-            hint="Alamat membantu petugas menemukan titik lokasi."
-            {...form.register("address")}
           />
 
           <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs text-slate-500">

@@ -85,7 +85,7 @@ export default function Dashboard() {
           onRetry={() => query.refetch()}
         />
       ) : stats.summary.total === 0 ? (
-        <ScrollView refreshControl={<RefreshControl refreshing={query.isFetching} onRefresh={() => { query.refetch(); }} />}>
+        <ScrollView contentContainerStyle={s.scrollContent} refreshControl={<RefreshControl refreshing={query.isFetching} onRefresh={() => { query.refetch(); }} />}>
           <Card>
             <View style={s.empty}>
               <Ionicons name="file-tray-outline" size={40} color={c.sub} />
@@ -94,13 +94,17 @@ export default function Dashboard() {
           </Card>
         </ScrollView>
       ) : (
-        <ScrollView refreshControl={<RefreshControl refreshing={query.isFetching} onRefresh={() => { query.refetch(); }} />}>
+        <ScrollView
+          contentContainerStyle={s.scrollContent}
+          refreshControl={<RefreshControl refreshing={query.isFetching} onRefresh={() => { query.refetch(); }} />}>
           <View style={s.tiles}>
             {(Object.keys(STATUS_META) as (keyof typeof STATUS_META)[]).map((k) => (
               <View key={k} style={[s.tile, { backgroundColor: STATUS_META[k].bg }]}>
-                <Ionicons name={TILE_ICON[k]} size={20} color={STATUS_META[k].fg} />
-                <Text style={[s.tileNum, { color: STATUS_META[k].fg }]}>{stats.summary[k]}</Text>
-                <Text style={s.tileLabel}>{STATUS_META[k].label}</Text>
+                <View style={s.tileText}>
+                  <Text style={[s.tileNum, { color: STATUS_META[k].fg }]}>{stats.summary[k]}</Text>
+                  <Text style={s.tileLabel}>{STATUS_META[k].label}</Text>
+                </View>
+                <Ionicons name={TILE_ICON[k]} size={20} color={STATUS_META[k].fg} style={s.tileIcon} />
               </View>
             ))}
           </View>
@@ -124,14 +128,18 @@ export default function Dashboard() {
           </Card>
           <Card>
             <Text style={s.h}>Lokasi terbanyak</Text>
-            {stats.topLocations.map((l, i) => (
-              <View key={i} style={s.locRow}>
-                <Ionicons name="location" size={16} color={c.primary} />
-                <Text style={s.loc}>
-                  {l.latitude.toFixed(3)}, {l.longitude.toFixed(3)} — {l.count} laporan
-                </Text>
-              </View>
-            ))}
+            {stats.topLocations.map((l, i) => {
+              return (
+                <View key={i} style={s.locRow}>
+                  <Ionicons name="location" size={16} color={c.primary} />
+                  <View style={s.locText}>
+                    <Text style={s.loc} numberOfLines={1}>
+                      {`${l.address ?? "Lokasi tanpa alamat"} — ${l.count} laporan`}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
           </Card>
         </ScrollView>
       )}
@@ -144,8 +152,7 @@ const s = StyleSheet.create({
   hi: { fontSize: 16, color: "#d1fae5", fontWeight: "600" },
   total: { fontSize: 52, fontWeight: "800", color: "#ffffff", letterSpacing: -1 },
   totalLabel: { fontSize: 14, color: "#d1fae5" },
-  presetRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
-  preset: {
+  presetRow: { flexDirection: "row", gap: 8, marginBottom: 12 },  preset: {
     borderWidth: 1,
     borderColor: c.line,
     borderRadius: 999,
@@ -157,7 +164,10 @@ const s = StyleSheet.create({
   presetText: { color: c.ink, fontWeight: "600" },
   presetTextOn: { color: c.white, fontWeight: "700" },
   tiles: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 },
-  tile: { flexBasis: "48%", flexGrow: 1, borderRadius: 16, padding: 14, gap: 2 },
+  scrollContent: { paddingHorizontal: 2, paddingTop: 2, paddingBottom: 16 },
+  tile: { flexBasis: "48%", flexGrow: 1, borderRadius: 16, padding: 14, flexDirection: "row", justifyContent: "space-between", shadowColor: c.shadow, shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  tileText: { gap: 2 },
+  tileIcon: { alignSelf: "flex-start" },
   tileNum: { fontSize: 28, fontWeight: "800" },
   tileLabel: { color: c.sub, fontSize: 13, fontWeight: "600" },
   h: { fontSize: 16, fontWeight: "800", color: c.ink, marginBottom: 8 },
@@ -167,7 +177,9 @@ const s = StyleSheet.create({
   barFill: { height: 12, borderRadius: 6 },
   barCount: { width: 32, textAlign: "right", fontWeight: "800", color: c.ink },
   locRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 },
-  loc: { fontSize: 14, color: c.ink },
+  locText: { flex: 1 },
+  loc: { fontSize: 14, color: c.ink, fontWeight: "600" },
+  locSub: { fontSize: 12, color: c.sub },
   empty: { alignItems: "center", gap: 10, paddingVertical: 20 },
   emptyText: { color: c.sub, textAlign: "center", fontSize: 14 },
 });

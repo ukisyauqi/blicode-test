@@ -14,7 +14,6 @@ export const registerSchema = z.object({
 });
 
 export const reportSchema = z.object({
-  title: z.string().trim().min(1, "Judul wajib diisi"),
   description: z.string().trim().min(1, "Deskripsi wajib diisi"),
   latitude: z.number().min(-90, "Latitude tidak valid").max(90, "Latitude tidak valid"),
   longitude: z.number().min(-180, "Longitude tidak valid").max(180, "Longitude tidak valid"),

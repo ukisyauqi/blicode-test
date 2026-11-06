@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "../src/auth";
 import { Loader } from "../src/ui";
 
@@ -33,10 +34,12 @@ function Gate() {
 export default function RootLayout() {
   return (
     <QueryClientProvider client={qc}>
-      <AuthProvider>
-        <Gate />
-        <StatusBar style="auto" />
-      </AuthProvider>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <Gate />
+          <StatusBar style="auto" />
+        </AuthProvider>
+      </SafeAreaProvider>
     </QueryClientProvider>
   );
 }

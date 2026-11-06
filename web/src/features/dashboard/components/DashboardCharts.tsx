@@ -291,16 +291,8 @@ export function TopLocations({ data }: { data: DashboardStats }) {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-slate-800">
-                  {location.address ??
-                    (location.latitude !== null && location.longitude !== null
-                      ? `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
-                      : "Lokasi tanpa alamat")}
+                  {location.address ?? "Lokasi tanpa alamat"}
                 </p>
-                {location.latitude !== null && location.longitude !== null && (
-                  <p className="text-[11px] text-slate-400">
-                    {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
-                  </p>
-                )}
               </div>
               <span className="shrink-0 rounded-full bg-white px-2 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200">
                 {location.count}

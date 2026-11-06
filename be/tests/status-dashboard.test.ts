@@ -94,9 +94,9 @@ describe("dashboard", () => {
     const owner = await registerUser("owner@example.com");
     const other = await registerUser("other@example.com");
     const admin = await registerAdmin();
-    await createReport(owner.cookie, { category: "organic" });
-    await createReport(owner.cookie, { category: "plastic" });
-    await createReport(other.cookie, { category: "paper" });
+    await createReport(owner.cookie, { category: "organic", postalCode: "10310" });
+    await createReport(owner.cookie, { category: "plastic", postalCode: "10310" });
+    await createReport(other.cookie, { category: "paper", postalCode: "10250" });
 
     const own = await request(app).get("/api/dashboard/stats").set("Cookie", owner.cookie);
     expect(own.status).toBe(200);
@@ -109,8 +109,7 @@ describe("dashboard", () => {
     );
     expect(own.body.data.trend).toHaveLength(1);
     expect(own.body.data.topLocations[0]).toMatchObject({
-      latitude: -6.2,
-      longitude: 106.8,
+      postalCode: "10310",
       count: 2,
     });
 

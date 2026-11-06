@@ -71,6 +71,7 @@ export async function create(user: AuthUser, input: CreateReportInput, photo: Ph
           description: input.description,
           category,
           address: input.address,
+          postalCode: input.postalCode,
           latitude: input.latitude,
           longitude: input.longitude,
           photoPath,
@@ -141,6 +142,7 @@ export async function list(user: AuthUser, query: ListReportsQuery) {
       ilike(reports.title, term),
       ilike(reports.description, term),
       ilike(reports.address, term),
+      ilike(reports.postalCode, term),
     );
     if (search) conditions.push(search);
   }
@@ -220,6 +222,7 @@ export async function update(user: AuthUser, id: string, input: UpdateReportInpu
   if (input.title !== undefined) patch.title = input.title;
   if (input.description !== undefined) patch.description = input.description;
   if (input.address !== undefined) patch.address = input.address;
+  if (input.postalCode !== undefined) patch.postalCode = input.postalCode;
   if (input.latitude !== undefined) patch.latitude = input.latitude;
   if (input.longitude !== undefined) patch.longitude = input.longitude;
   if (input.category !== undefined) patch.category = input.category;
@@ -327,6 +330,7 @@ export function toReport(row: ReportRow, reporter: Reporter = null) {
     description: row.description,
     category: row.category,
     address: row.address,
+    postalCode: row.postalCode,
     latitude: row.latitude,
     longitude: row.longitude,
     photoUrl: row.photoPath ? `/uploads/${row.photoPath}` : null,

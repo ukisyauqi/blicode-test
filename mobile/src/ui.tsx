@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   View,
   type TextInputProps,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { CATEGORY_BG, CATEGORY_LABEL, STATUS_META } from "./lib/constants";
 import type { Category, Status } from "./types";

@@ -16,6 +16,7 @@ export interface Report {
   description: string;
   category: Category;
   address: string | null;
+  postalCode: string | null;
   latitude: number | string;
   longitude: number | string;
   photoUrl: string | null;
@@ -45,5 +46,5 @@ export interface Stats {
   byStatus: { status: Status; count: number }[];
   byCategory: { category: Category; count: number }[];
   trend: { date: string; count: number }[];
-  topLocations: { latitude: number; longitude: number; count: number }[];
+  topLocations: { postalCode: string | null; address: string | null; latitude: number | string; longitude: number | string; count: number }[];
 }

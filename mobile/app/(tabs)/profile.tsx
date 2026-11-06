@@ -33,7 +33,7 @@ export default function Profile() {
 
   return (
     <Screen>
-      <ScrollView>
+      <ScrollView contentContainerStyle={s.scrollContent}>
         <Title>Profil</Title>
         <Hero>
           <View style={s.me}>
@@ -69,6 +69,7 @@ export default function Profile() {
 }
 
 const s = StyleSheet.create({
+  scrollContent: { paddingHorizontal: 2, paddingTop: 2, paddingBottom: 16 },
   me: { flexDirection: "row", alignItems: "center", gap: 14 },
   avatar: {
     width: 60,

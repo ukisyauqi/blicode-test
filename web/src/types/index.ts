@@ -21,6 +21,7 @@ export interface Report {
   description: string;
   category: ReportCategory;
   address: string | null;
+  postalCode: string | null;
   latitude: number;
   longitude: number;
   photoUrl: string | null;
@@ -85,6 +86,7 @@ export interface DashboardTrendPoint {
 }
 
 export interface DashboardLocationPoint {
+  postalCode: string | null;
   latitude: number | null;
   longitude: number | null;
   address: string | null;

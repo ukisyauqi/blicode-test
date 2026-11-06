@@ -1,11 +1,7 @@
 import { z } from "zod";
 
 export const reportSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(3, "Judul minimal 3 karakter")
-    .max(120, "Judul maksimal 120 karakter"),
+  title: z.string().trim().max(120, "Judul maksimal 120 karakter").optional(),
   description: z
     .string()
     .trim()
@@ -28,3 +24,9 @@ export const reportSchema = z.object({
 });
 
 export type ReportFormValues = z.infer<typeof reportSchema>;
+
+/** Judul dibuat otomatis dari awal deskripsi karena tidak lagi diinput manual. */
+export function titleFromDescription(description: string): string {
+  const normalized = description.trim().replace(/\s+/g, " ");
+  return normalized.slice(0, 60);
+}

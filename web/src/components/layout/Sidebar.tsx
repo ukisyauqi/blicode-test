@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import {
   ClipboardList,
   LayoutDashboard,
@@ -21,6 +21,16 @@ const navItems = [
   { to: "/profile", label: "Profil", icon: UserCircle, adminOnly: false },
 ];
 
+function isItemActive(to: string, pathname: string): boolean {
+  if (to === "/reports") {
+    return (
+      pathname === "/reports" ||
+      (/^\/reports\/[^/]+/.test(pathname) && !pathname.startsWith("/reports/new"))
+    );
+  }
+  return pathname === to;
+}
+
 export function SidebarContent({
   onNavigate,
   onLogout,
@@ -29,6 +39,7 @@ export function SidebarContent({
   onLogout: () => void;
 }) {
   const { user, isAdmin } = useAuth();
+  const { pathname } = useLocation();
 
   return (
     <div className="flex h-full flex-col">
@@ -51,33 +62,30 @@ export function SidebarContent({
       <nav aria-label="Navigasi utama" className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {navItems
           .filter((item) => !item.adminOnly || isAdmin)
-          .map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              onClick={onNavigate}
-              end={item.to === "/dashboard" || item.to === "/reports/new"}
-              className={({ isActive }) =>
-                cn(
+          .map((item) => {
+            const active = isItemActive(item.to, pathname);
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
+                className={cn(
                   "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition",
-                  isActive
+                  active
                     ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-                  item.to === "/reports/new" && !isActive && "text-emerald-700",
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <item.icon
-                    className={cn("h-4.5 w-4.5", isActive ? "text-emerald-700" : "text-slate-400")}
-                    aria-hidden="true"
-                  />
-                  {item.label}
-                </>
-              )}
-            </NavLink>
-          ))}
+                  item.to === "/reports/new" && !active && "text-emerald-700",
+                )}
+              >
+                <item.icon
+                  className={cn("h-4.5 w-4.5", active ? "text-emerald-700" : "text-slate-400")}
+                  aria-hidden="true"
+                />
+                {item.label}
+              </Link>
+            );
+          })}
       </nav>
 
       <div className="border-t border-slate-200 p-3">

@@ -73,8 +73,12 @@ export async function api<T = unknown>(path: string, opts: Opts = {}): Promise<E
       headers,
       body: opts.form ?? (opts.json !== undefined ? JSON.stringify(opts.json) : undefined),
     });
-  } catch {
-    throw new ApiError("Tidak dapat menghubungi server. Periksa koneksi dan EXPO_PUBLIC_API_URL.", "NETWORK", 0);
+  } catch (e) {
+    throw new ApiError(
+      `Tidak dapat menghubungi server. Periksa koneksi dan EXPO_PUBLIC_API_URL. (${e instanceof Error ? e.message : String(e)})`,
+      "NETWORK",
+      0,
+    );
   }
   if (res.status === 204) return { data: null as T };
   const body = await res.json().catch(() => null);
@@ -101,13 +105,33 @@ export function fileUrl(path: string | null): string | null {
 export async function photoForm(uri: string, field: string): Promise<FormData> {
   const ext = uri.split(".").pop()?.toLowerCase().split("?")[0] ?? "jpg";
   const type = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+  const name = `photo.${ext}`;
   const form = new FormData();
   if (isWeb) {
     // FormData web butuh Blob asli; object RN { uri, name, type } ditolak fetch.
     const blob = await (await fetch(uri)).blob();
-    form.append(field, blob, `photo.${ext}`);
-  } else {
-    form.append(field, { uri, name: `photo.${ext}`, type } as unknown as Blob);
+    form.append(field, blob, name);
+    return form;
   }
+  // Native (RN baru / Expo SDK 58): object { uri, name, type } ditolak fetch
+  // ("Unsupported FormDataPart implementation"), dan `new Blob([arrayBuffer])`
+  // juga tidak didukung Hermes. Kirim shape { bytes, name, type } — persis yang
+  // diterima convertFormData Expo (lihat convertFormData-test.native.ts).
+  // Sengaja tanpa fallback: format lama pasti gagal, fallback hanya menyembunyikan error asli.
+  let FS: typeof import("expo-file-system");
+  try {
+    FS = await import("expo-file-system");
+  } catch (e) {
+    throw new Error(`Gagal load expo-file-system (${e instanceof Error ? e.message : String(e)})`);
+  }
+  let data: Uint8Array;
+  try {
+    data = await new FS.File(uri).bytes();
+  } catch (e) {
+    throw new Error(
+      `Foto tidak bisa dibaca, pilih ulang fotonya (${e instanceof Error ? e.message : String(e)})`,
+    );
+  }
+  form.append(field, { bytes: () => data, name, type } as unknown as Blob);
   return form;
 }

@@ -22,6 +22,11 @@ export const createReportSchema = z.object({
   title: z.string().trim().min(1),
   description: z.string().trim().min(1),
   address: z.string().trim().optional(),
+  postalCode: z
+    .string()
+    .trim()
+    .max(10, "Kode pos maksimal 10 karakter")
+    .optional(),
   latitude: z.coerce.number().min(-90).max(90),
   longitude: z.coerce.number().min(-180).max(180),
   category,
@@ -31,6 +36,7 @@ export const updateReportSchema = z.object({
   title: z.string().trim().min(1).optional(),
   description: z.string().trim().min(1).optional(),
   address: z.string().trim().nullable().optional(),
+  postalCode: z.string().trim().max(10, "Kode pos maksimal 10 karakter").nullable().optional(),
   latitude: z.coerce.number().min(-90).max(90).optional(),
   longitude: z.coerce.number().min(-180).max(180).optional(),
   category,

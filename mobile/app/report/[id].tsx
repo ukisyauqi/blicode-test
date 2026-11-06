@@ -44,10 +44,12 @@ export default function ReportDetail() {
         {uri ? <Image source={{ uri }} style={s.photo} /> : null}
         <Card>
           <Text style={s.desc}>{report.description}</Text>
-          {report.address ? (
+          {report.address || report.postalCode ? (
             <View style={s.addrRow}>
               <Ionicons name="location-outline" size={15} color={c.sub} />
-              <Text style={s.sub}>{report.address}</Text>
+              <Text style={s.sub}>
+                {[report.address, report.postalCode].filter(Boolean).join(" ")}
+              </Text>
             </View>
           ) : null}
           <Text style={s.sub}>

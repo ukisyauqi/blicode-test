@@ -49,6 +49,7 @@ export const reports = pgTable(
     description: text("description").notNull(),
     category: categoryEnum("category").notNull(),
     address: text("address"),
+    postalCode: text("postal_code"),
     latitude: numeric("latitude", { precision: 9, scale: 6, mode: "number" }).notNull(),
     longitude: numeric("longitude", { precision: 9, scale: 6, mode: "number" }).notNull(),
     photoPath: text("photo_path"),

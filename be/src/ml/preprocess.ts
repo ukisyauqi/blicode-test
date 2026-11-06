@@ -7,7 +7,12 @@ const STD = [0.229, 0.224, 0.225];
 
 export class InvalidImageError extends Error {
   constructor(cause?: unknown) {
-    super("File bukan gambar yang valid", { cause });
+    const detail = cause instanceof Error ? cause.message : undefined;
+    const message =
+      detail && /decode|png|jpeg|webp|read|corrupt|truncat/i.test(detail)
+        ? "Gambar tidak dapat diproses. Gunakan file JPEG, PNG, atau WebP yang valid."
+        : "File bukan gambar yang valid";
+    super(message, { cause });
     this.name = "InvalidImageError";
   }
 }
@@ -88,7 +93,7 @@ export async function preprocessImage(input: Buffer): Promise<Float32Array> {
 }
 
 async function preprocessValidated(input: Buffer): Promise<Float32Array> {
-  const original = await sharp(input)
+  const original = await sharp(input, { failOn: "none" })
     .rotate()
     .removeAlpha()
     .toColourspace("srgb")

@@ -126,6 +126,7 @@ export default function Reports() {
           data={items}
           keyExtractor={(i) => i.id}
           renderItem={renderItem}
+          contentContainerStyle={s.scrollContent}
           onEndReached={() => {
             if (!loading && page < totalPages) load(page + 1, false);
           }}
@@ -144,6 +145,7 @@ export default function Reports() {
 }
 
 const s = StyleSheet.create({
+  scrollContent: { paddingHorizontal: 2, paddingTop: 2, paddingBottom: 16 },
   searchRow: { flexDirection: "row", gap: 8, alignItems: "flex-end" },
   go: { backgroundColor: c.primary, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 12 },
   goText: { color: c.white, fontWeight: "700" },

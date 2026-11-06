@@ -22,6 +22,7 @@ export type MockReport = {
   description: string;
   category: ReportCategory;
   address: string | null;
+  postalCode: string | null;
   latitude: number;
   longitude: number;
   photoUrl: string | null;
@@ -92,6 +93,7 @@ function createReports(): MockReport[] {
       description: "Sampah plastik menumpuk di dekat pintu masuk pasar sejak tiga hari lalu.",
       category: "plastic",
       address: "Pasar Baru, Jakarta Pusat",
+      postalCode: "10110",
       latitude: -6.1667,
       longitude: 106.8333,
       photoUrl: null,
@@ -109,6 +111,7 @@ function createReports(): MockReport[] {
       description: "Daun dan sisa makanan menumpuk di sudut taman dekat area bermain anak.",
       category: "organic",
       address: "Taman Suropati, Jakarta",
+      postalCode: "10310",
       latitude: -6.2,
       longitude: 106.833,
       photoUrl: null,
@@ -126,6 +129,7 @@ function createReports(): MockReport[] {
       description: "Kardus dan kertas bekas berserakan di trotoar dan mengganggu pejalan kaki.",
       category: "paper",
       address: "Jl. Sudirman, Jakarta",
+      postalCode: "10220",
       latitude: -6.2146,
       longitude: 106.8211,
       photoUrl: null,
@@ -361,13 +365,20 @@ export async function installMockApi(page: Page): Promise<MockState> {
       }
       const locationMap = new Map<
         string,
-        { address: string; latitude: number; longitude: number; count: number }
+        {
+          postalCode: string;
+          address: string | null;
+          latitude: number;
+          longitude: number;
+          count: number;
+        }
       >();
       for (const report of scoped) {
-        const address = report.address ?? "Tanpa alamat";
-        const current = locationMap.get(address);
-        locationMap.set(address, {
-          address,
+        if (!report.postalCode) continue;
+        const current = locationMap.get(report.postalCode);
+        locationMap.set(report.postalCode, {
+          postalCode: report.postalCode,
+          address: report.address ?? current?.address ?? null,
           latitude: report.latitude,
           longitude: report.longitude,
           count: (current?.count ?? 0) + 1,
@@ -387,7 +398,9 @@ export async function installMockApi(page: Page): Promise<MockState> {
           trend: [...trendMap.entries()]
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([date, count]) => ({ date, count })),
-          topLocations: [...locationMap.values()],
+          topLocations: [...locationMap.values()]
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5),
         },
       });
     }
@@ -463,6 +476,7 @@ export async function installMockApi(page: Page): Promise<MockState> {
         category:
           (parseMultipartField(body, "category") as ReportCategory | undefined) ?? "plastic",
         address: parseMultipartField(body, "address") ?? null,
+        postalCode: parseMultipartField(body, "postalCode") ?? null,
         latitude: Number(parseMultipartField(body, "latitude") ?? -6.2),
         longitude: Number(parseMultipartField(body, "longitude") ?? 106.8),
         photoUrl: body.includes('name="photo"') ? "/uploads/mock-photo.png" : null,
@@ -502,6 +516,7 @@ export async function installMockApi(page: Page): Promise<MockState> {
         report.title = parseMultipartField(body, "title") ?? report.title;
         report.description = parseMultipartField(body, "description") ?? report.description;
         report.address = parseMultipartField(body, "address") ?? report.address;
+        report.postalCode = parseMultipartField(body, "postalCode") ?? report.postalCode;
         const category = parseMultipartField(body, "category");
         if (category) report.category = category as ReportCategory;
         if (body.includes('name="photo"')) {
