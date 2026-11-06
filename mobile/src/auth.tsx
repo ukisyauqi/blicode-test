@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { api, clearToken, getToken, setToken } from "./lib/api";
+import { api, clearToken, getToken, setOnUnauthorized, setToken } from "./lib/api";
 import type { User } from "./types";
 
 interface Auth {
@@ -19,6 +19,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
 
   useEffect(() => {
+    setOnUnauthorized(() => {
+      setUser(null);
+      qc.clear();
+    });
     (async () => {
       try {
         if (await getToken()) setUser((await api<User>("/auth/me")).data);
@@ -28,7 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setReady(true);
       }
     })();
-  }, []);
+    return () => setOnUnauthorized(null);
+  }, [qc]);
 
   async function login(email: string, password: string) {
     const body = await api<User>("/auth/login", { method: "POST", json: { email, password }, auth: false });

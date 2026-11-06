@@ -46,7 +46,7 @@ export default function Dashboard() {
       <Title>Dashboard</Title>
       <View style={s.presetRow}>
         {(["7", "30", "custom"] as const).map((p) => (
-          <Pressable key={p} onPress={() => setPreset(p)} style={[s.preset, preset === p && s.presetOn]}>
+          <Pressable key={p} onPress={() => { setPreset(p); setApplied(null); }} style={[s.preset, preset === p && s.presetOn]}>
             <Text style={preset === p ? s.presetTextOn : s.presetText}>
               {p === "7" ? "7 hari" : p === "30" ? "30 hari" : "Custom"}
             </Text>

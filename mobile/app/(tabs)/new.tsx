@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -28,18 +28,22 @@ export default function NewReport() {
   const [classifyErr, setClassifyErr] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const latest = useRef<string | null>(null);
 
   async function classify(uri: string) {
+    latest.current = uri;
     setClassifying(true);
     setClassifyErr(null);
     try {
       const r = await api<ClassifyResult>("/reports/classify", { method: "POST", form: photoForm(uri, "file") });
+      if (latest.current !== uri) return;
       setPred(r.data);
       setCategory((prev) => prev || r.data.category);
     } catch (e) {
+      if (latest.current !== uri) return;
       setClassifyErr(e instanceof ApiError ? e.message : "Deteksi AI gagal — pilih kategori manual");
     } finally {
-      setClassifying(false);
+      if (latest.current === uri) setClassifying(false);
     }
   }
 
@@ -132,6 +136,7 @@ export default function NewReport() {
         </View>
         <Text style={s.label}>Titik lokasi</Text>
         <MapView
+          key={`${lat},${lng}`}
           style={s.map}
           initialRegion={{ latitude: lat, longitude: lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
           onPress={(e) => {

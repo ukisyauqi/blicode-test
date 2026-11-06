@@ -24,8 +24,3 @@ export const passwordSchema = z.object({
   current: z.string().min(1, "Password lama wajib diisi"),
   next: z.string().min(8, "Password baru minimal 8 karakter").max(72),
 });
-
-export function firstError(parse: z.ZodSafeParseResult<unknown>): string | null {
-  if (parse.success) return null;
-  return parse.error.issues[0]?.message ?? "Input tidak valid";
-}

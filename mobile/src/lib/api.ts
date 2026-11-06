@@ -5,6 +5,11 @@ export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4000
 const TOKEN_KEY = "auth_token";
 let mem: string | null | undefined;
 
+let onUnauthorized: (() => void) | null = null;
+export function setOnUnauthorized(fn: (() => void) | null) {
+  onUnauthorized = fn;
+}
+
 export async function getToken(): Promise<string | null> {
   if (mem !== undefined) return mem;
   mem = await SecureStore.getItemAsync(TOKEN_KEY);
@@ -61,7 +66,10 @@ export async function api<T = unknown>(path: string, opts: Opts = {}): Promise<E
   if (res.status === 204) return { data: null as T };
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    if (res.status === 401) await clearToken();
+    if (res.status === 401) {
+      await clearToken();
+      onUnauthorized?.();
+    }
     throw new ApiError(
       body?.error?.message ?? `Request gagal (${res.status})`,
       body?.error?.code ?? "UNKNOWN",
