@@ -4,13 +4,14 @@ Aplikasi pelaporan sampah berbasis web dengan **klasifikasi gambar otomatis**. P
 laporan lengkap dengan foto dan titik lokasi; model machine learning menebak kategori sampah
 (`organic`, `plastic`, `paper`), lalu admin memproses laporan tersebut.
 
-Repository ini adalah monorepo dengan tiga bagian:
+Repository ini adalah monorepo dengan empat bagian:
 
 | Folder         | Isi                                                              |
 | -------------- | ---------------------------------------------------------------- |
 | [`ml/`](ml/)   | Pipeline Python: persiapan data, training, evaluasi, ekspor ONNX |
 | [`be/`](be/)   | REST API Express + TypeScript, PostgreSQL, dan inferensi ONNX    |
 | [`web/`](web/) | Frontend React + Vite + TypeScript                               |
+| [`mobile/`](mobile/) | Aplikasi mobile Expo + React Native (role `user`)          |
 
 ---
 
@@ -113,6 +114,7 @@ model.
 | ML       | Python 3.11+, PyTorch, torchvision, scikit-learn, ONNX / ONNX Runtime                                                |
 | Backend  | Node.js 20+, Express 5, TypeScript, Drizzle ORM, PostgreSQL, Zod, JWT, Multer, sharp, onnxruntime-node               |
 | Frontend | React 19, Vite 8, TypeScript, React Router, TanStack Query, React Hook Form + Zod, Tailwind CSS 4, Recharts, Leaflet |
+| Mobile   | Expo SDK 58, React Native, TypeScript, Expo Router, TanStack Query, Zod, SecureStore, react-native-maps              |
 | Testing  | pytest + ruff, Vitest + Supertest, Vitest + Testing Library, Playwright                                              |
 
 ---
@@ -148,6 +150,11 @@ model.
 │   │   └── lib/                 # API client, konstanta, util
 │   ├── e2e/                     # Playwright + mock API
 │   └── PLAN.md                  # Rencana dan aturan frontend
+├── mobile/                      # Aplikasi mobile Expo (role user)
+│   ├── app/                     # Route Expo Router: login/register, (tabs)/, report/[id]
+│   ├── src/                     # auth, lib/api, validasi Zod, tipe, UI dasar
+│   ├── api.test.ts              # Tes API client (Node test runner)
+│   └── README.md                # Setup dan ringkasan mobile
 ├── qa/                          # Laporan pengujian dan rencana perbaikan
 ├── scripts/check.sh             # CI lokal (backend + frontend, opsional ML/E2E)
 ├── .github/workflows/be.yml     # CI backend (opsional)
@@ -155,7 +162,7 @@ model.
 ```
 
 Tidak ada workspace tool di root; setiap folder memiliki dependency manager sendiri
-(`uv` untuk `ml/`, `npm` untuk `be/` dan `web/`).
+(`uv` untuk `ml/`, `npm` untuk `be/`, `web/`, dan `mobile/`).
 
 ---
 
@@ -246,7 +253,20 @@ npm run dev
 Buka `http://localhost:5173`. Akun admin dibuat dari `ADMIN_EMAIL` dan `ADMIN_PASSWORD` saat
 `npm run db:seed`; pengguna biasa dapat mendaftar sendiri lewat halaman registrasi.
 
-### 5. Data demo (opsional)
+### 5. Jalankan aplikasi mobile (opsional)
+
+```bash
+cd mobile
+npm install
+cp .env.example .env   # isi EXPO_PUBLIC_API_URL dengan IP LAN agar device fisik terhubung
+npx expo start         # buka lewat Expo Go (scan QR)
+```
+
+Mobile memakai backend yang sama (`EXPO_PUBLIC_API_URL` menunjuk port 4000).
+Emulator Android pakai `http://10.0.2.2:4000/api`, simulator iOS bisa pakai
+`http://localhost:4000/api`. Detail ada di [`mobile/README.md`](mobile/README.md).
+
+### 6. Data demo (opsional)
 
 Untuk demo atau pengujian manual, isi database dengan akun dan laporan contoh:
 
@@ -306,6 +326,12 @@ npm run db:cleanup:qa
 Variabel `VITE_*` dibaca saat build, jadi nilainya perlu disesuaikan juga di environment
 deployment frontend.
 
+### Mobile (`mobile/.env`)
+
+| Variabel              | Contoh                       | Keterangan                                    |
+| --------------------- | ---------------------------- | --------------------------------------------- |
+| `EXPO_PUBLIC_API_URL` | `http://192.168.1.10:4000/api` | Base URL API backend (pakai IP LAN untuk device fisik) |
+
 ---
 
 ## Perintah Pengembangan
@@ -357,6 +383,14 @@ deployment frontend.
 
 > Sebelum menjalankan E2E pertama kali, pasang browser Playwright:
 > `npx playwright install chromium`.
+
+### Mobile (`mobile/`)
+
+| Perintah            | Fungsi                              |
+| ------------------- | ----------------------------------- |
+| `npx expo start`    | Dev server + QR untuk Expo Go       |
+| `npm test`          | Tes API client (Node test runner)   |
+| `npm run typecheck` | Pemeriksaan tipe                    |
 
 ---
 
@@ -423,7 +457,8 @@ shasum -a 256 be/models/best.onnx
 
 Semua endpoint (kecuali file upload statis) memakai prefix `/api`. Respons sukses berbentuk
 `{ data, meta? }`; error berbentuk `{ error: { code, message, details? } }`. Autentikasi memakai
-cookie httpOnly, sehingga frontend mengirim request dengan `credentials: "include"`.
+cookie httpOnly untuk web (frontend mengirim dengan `credentials: "include"`); aplikasi
+mobile memakai `Authorization: Bearer <jwt>` dan menerima token di body `register`/`login`.
 
 | Grup          | Endpoint                                                                                                                                                  |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -518,6 +553,8 @@ Saat ini belum ada workflow CI untuk `ml/` dan `web/`; gunakan `RUN_ML=1`/`RUN_E
 | [`be/README.md`](be/README.md)             | Setup backend dan ringkasan endpoint                             |
 | [`be/PLAN.md`](be/PLAN.md)                 | Skema database, aturan bisnis, API, dan keamanan                 |
 | [`web/PLAN.md`](web/PLAN.md)               | Rencana frontend, route, role, dan fitur UI                      |
+| [`mobile/README.md`](mobile/README.md)       | Setup mobile, layar, API, permission, dan batasan                |
+| [`mobile/PLAN.md`](mobile/PLAN.md)           | Rencana mobile, kontrak API, dan tahapan fase                    |
 
 ---
 
