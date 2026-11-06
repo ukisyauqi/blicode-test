@@ -183,13 +183,23 @@ Tambahkan route `PATCH /me` + schema `{ name: string }`, update `users.name`, ke
 
 ## Status Perbaikan
 
-Ketiga bug sudah diperbaiki pada branch `fix/qa-bugs` dan diverifikasi ulang di browser pada 5 November 2026.
+Ketiga bug sudah diperbaiki pada branch `fix/qa-bugs`, diverifikasi ulang di browser pada 5 November 2026, lalu di-merge ke `main` melalui [PR #1](https://github.com/ukisyauqi/blicode-test/pull/1) pada commit `571e927`. Branch tersebut sudah dihapus dari lokal dan remote.
 
 | Bug    | Commit     | Perubahan utama                                                                     | Verifikasi                                                                                    |
 | ------ | ---------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | BUG-01 | `fe85dc5`  | Route `PATCH /api/auth/me`, schema `{ name }`, service `updateProfile`              | Ubah nama menampilkan toast **"Profil diperbarui"**, nama sidebar berubah dan tetap setelah reload |
 | BUG-02 | `9e85dd5`  | Left join `users` untuk `reporter` dan `changedByUser`; user soft-delete tetap tampil | Kolom **Pelapor**, bagian **PELAPOR**, dan riwayat menampilkan nama/email                      |
 | BUG-03 | `83268c1`  | `APP_TIMEZONE=Asia/Jakarta`, helper `dateRange`, batas `to` eksklusif, tren per hari lokal | `from=to=2026-11-05` menampilkan laporan hari itu; dashboard default/custom menghitung 1 laporan |
+
+Dokumentasi QA ditambahkan di `f9b4db8`, lalu CI diperbaiki di `6601009` dengan meng-quote
+`JWT_SECRET` agar tetap dibaca sebagai string. Run CI `Backend` terakhir di `main`
+(`42151757899`) berstatus **success**.
+
+Tidak ada perubahan skema database atau migrasi pada ketiga perbaikan ini. Rollback dapat
+dilakukan dengan `git revert` per commit bug tanpa menyentuh perbaikan lain. Env baru
+`APP_TIMEZONE` memiliki default `Asia/Jakarta`, sehingga deployment lama tetap berjalan tanpa
+perubahan `.env`.
+
 
 Tes regresi yang ditambahkan:
 
