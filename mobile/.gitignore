@@ -4,3 +4,6 @@ dist/
 .env
 *.log
 .DS_Store
+# Hasil npx expo prebuild (build lokal); jangan commit
+android/
+ios/
