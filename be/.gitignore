@@ -8,3 +8,4 @@ uploads-test/
 models/*.onnx
 !.gitkeep
 *.log
+.env.bak.e2e

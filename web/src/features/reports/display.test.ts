@@ -11,6 +11,8 @@ const reporter: User = {
 };
 
 function report(overrides: Partial<Report>): Report {
+  // postalCode dipisah agar spread Partial tidak membuat field wajib jadi opsional.
+  const { postalCode = null, ...rest } = overrides;
   return {
     id: "report-1",
     userId: reporter.id,
@@ -18,6 +20,7 @@ function report(overrides: Partial<Report>): Report {
     description: "Deskripsi",
     category: "plastic",
     address: null,
+    postalCode,
     latitude: -6.2,
     longitude: 106.8,
     photoUrl: null,
@@ -27,7 +30,7 @@ function report(overrides: Partial<Report>): Report {
     rejectReason: null,
     createdAt: "2026-11-05T00:00:00.000Z",
     updatedAt: "2026-11-05T00:00:00.000Z",
-    ...overrides,
+    ...rest,
   };
 }
 

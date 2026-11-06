@@ -8,7 +8,26 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRES_IN: z.string().default("7d"),
-  CORS_ORIGIN: z.string().url().default("http://localhost:5173"),
+  CORS_ORIGIN: z
+    .string()
+    .min(1)
+    .default("http://localhost:5173")
+    .refine(
+      (value) =>
+        value
+          .split(",")
+          .map((origin) => origin.trim())
+          .filter(Boolean)
+          .every((origin) => {
+            try {
+              new URL(origin);
+              return true;
+            } catch {
+              return false;
+            }
+          }),
+      "CORS_ORIGIN harus berupa URL atau daftar URL yang dipisah koma",
+    ),
   APP_TIMEZONE: z.string().default("Asia/Jakarta"),
   UPLOAD_DIR: z.string().default("./uploads"),
   MAX_UPLOAD_SIZE_MB: z.coerce.number().positive().default(5),

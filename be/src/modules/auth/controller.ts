@@ -6,7 +6,9 @@ import * as service from "./service.js";
 const cookieOptions = {
   httpOnly: true,
   secure: env.NODE_ENV === "production",
-  sameSite: "lax" as const,
+  // FE (Vercel) dan BE (Render) beda domain saat production, jadi cookie
+  // harus SameSite=None + Secure agar terkirim cross-site.
+  sameSite: env.NODE_ENV === "production" ? ("none" as const) : ("lax" as const),
   path: "/",
 };
 

@@ -25,7 +25,12 @@ export function createApp() {
       crossOriginResourcePolicy: { policy: "cross-origin" },
     }),
   );
-  app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+  const corsOrigins = env.CORS_ORIGIN.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  app.use(
+    cors({ origin: corsOrigins.length > 1 ? corsOrigins : corsOrigins[0], credentials: true }),
+  );
   app.use(cookieParser());
   app.use(express.json({ limit: "100kb" }));
   app.use(
