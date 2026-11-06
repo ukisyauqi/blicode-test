@@ -1,19 +1,24 @@
-import { StyleSheet } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import { Linking, StyleSheet, Text, View } from "react-native";
+import { c } from "../ui";
 
+// Tanpa peta native (react-native-maps di Android wajib Google Maps API key):
+// tampilkan koordinat + tautan Google Maps.
 export function ReportMap({ lat, lng }: { lat: number; lng: number }) {
+  const url = `https://www.google.com/maps?q=${lat},${lng}`;
   return (
-    <MapView
-      style={s.map}
-      scrollEnabled={false}
-      zoomEnabled={false}
-      region={{ latitude: lat, longitude: lng, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
-    >
-      <Marker coordinate={{ latitude: lat, longitude: lng }} />
-    </MapView>
+    <View style={s.box}>
+      <Text style={s.coords}>
+        📍 {lat.toFixed(6)}, {lng.toFixed(6)}
+      </Text>
+      <Text style={s.link} onPress={() => Linking.openURL(url)} accessibilityRole="link">
+        Buka di Google Maps
+      </Text>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  map: { width: "100%", height: 180, borderRadius: 10, marginVertical: 8 },
+  box: { backgroundColor: c.bg, borderRadius: 10, padding: 12, marginVertical: 8 },
+  coords: { color: c.ink, fontSize: 14, fontWeight: "700", marginBottom: 4 },
+  link: { color: c.primary, fontWeight: "700" },
 });

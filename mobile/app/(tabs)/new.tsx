@@ -89,18 +89,6 @@ export default function NewReport() {
     classify(uri);
   }
 
-  async function useMyLocation() {
-    const perm = await Location.requestForegroundPermissionsAsync();
-    if (!perm.granted) return setErr("Izin lokasi ditolak. Tandai titik manual di peta.");
-    try {
-      const pos = await Location.getCurrentPositionAsync({});
-      setLat(pos.coords.latitude);
-      setLng(pos.coords.longitude);
-    } catch {
-      setErr("Gagal membaca GPS. Tandai titik manual di peta.");
-    }
-  }
-
   async function submit() {
     const v = reportSchema.safeParse({ description, latitude: lat, longitude: lng });
     if (!v.success) return setErr(v.error.issues[0]?.message ?? "Input tidak valid");
@@ -168,10 +156,6 @@ export default function NewReport() {
         <Card>
         <Text style={s.sec}>📍 Titik lokasi</Text>
         <MapPicker lat={lat} lng={lng} onChange={(a, b) => { setLat(a); setLng(b); }} />
-        <Text style={s.coords}>
-          {lat.toFixed(6)}, {lng.toFixed(6)}
-        </Text>
-        <Btn label="Gunakan lokasi saya" tone="plain" onPress={useMyLocation} />
         </Card>
         {err ? <Text style={{ color: "#b91c1c", marginBottom: 8 }}>{err}</Text> : null}
         <Btn label={sending ? "Mengirim..." : "Kirim laporan"} onPress={submit} disabled={sending || classifying} />
@@ -199,5 +183,4 @@ const s = StyleSheet.create({
   },
   aiText: { color: c.primaryDeep, fontWeight: "700" },
   warn: { backgroundColor: c.warnBg, color: c.warnFg, padding: 10, borderRadius: 12, marginBottom: 8 },
-  coords: { color: c.sub, fontSize: 13, marginBottom: 6, fontWeight: "600" },
 });

@@ -17,8 +17,8 @@ dashboard semua laporan) tetap lewat web. Rencana lengkap: [`PLAN.md`](PLAN.md).
 | Validasi        | Zod (skema disalin dari `be/`, tanpa React Hook Form)|
 | HTTP client     | `fetch` + wrapper `src/lib/api.ts`                   |
 | Foto            | `expo-image-picker` (kamera / galeri)                |
-| Lokasi          | `expo-location` (GPS + tombol "lokasi saya")         |
-| Peta            | `react-native-maps` (pilih titik tap/drag)           |
+| Lokasi          | `expo-location` (GPS otomatis + tombol "Perbarui lokasi" + input manual) |
+| Peta            | Tanpa peta native (butuh Google Maps API key); koordinat teks + tautan Google Maps |
 | Sesi            | `expo-secure-store` (token Bearer; `localStorage` di web)    |
 | Grafik          | Bar digambar manual dengan `View` (tanpa lib chart)  |
 | Ikon & hero     | `@expo/vector-icons`, `expo-linear-gradient`         |
@@ -55,9 +55,9 @@ npx expo start --web   # alternatif: jalan di browser (lihat "Jalan di web")
 verifikasi cepat tanpa HP. Penyesuaian khusus web (otomatis, tanpa config):
 
 - Token sesi memakai `localStorage` (SecureStore tidak ada di browser).
-- `react-native-maps` tidak jalan di browser: form memakai input koordinat
-  manual (`MapPicker.web.tsx`), detail memakai tautan Google Maps
-  (`ReportMap.web.tsx`). Di native tetap peta penuh.
+- Lokasi diambil otomatis saat layar Lapor dibuka (`expo-location`, tanpa API key);
+  tampil sebagai teks koordinat + tombol "Perbarui lokasi" + input manual +
+  tautan "Buka di Google Maps" (`MapPicker.tsx`, `ReportMap.tsx`).
 - Tombol Kamera disembunyikan di web; Galeri memakai file picker browser.
   Upload foto di web dikirim sebagai `Blob` asli (`photoForm` async).
 - Browser menegakkan CORS: untuk uji lokal, `CORS_ORIGIN` di `be/.env` harus
@@ -139,8 +139,8 @@ Perilaku form laporan:
    Jawaban basi diabaikan bila pengguna cepat ganti foto (guard `latest` ref).
 2. Kategori terisi dari AI tapi tetap bisa diubah manual. Tanpa foto + tanpa
    kategori → `422` (backend menolak).
-3. Titik lokasi: tap/drag di peta atau "Gunakan lokasi saya". Peta me-remount
-   (`key={lat,lng}`) agar view mengikuti fix GPS.
+3. Titik lokasi: otomatis dari GPS saat layar dibuka, bisa "Perbarui lokasi"
+   atau isi manual.
 4. Kirim multipart → invalidasi cache `stats` → navigasi ke detail laporan.
    Form tidak dihapus saat error; pesan backend ditampilkan inline.
 
@@ -150,9 +150,7 @@ dengan origin API.
 ## Permission Native (`app.json`)
 
 - Kamera/galeri (`expo-image-picker`): pesan izin Indonesia.
-- Lokasi saat dipakai (`expo-location`): izin ditolak → tandai manual di peta.
-- Android release dengan `react-native-maps` butuh Google Maps API key
-  (siapkan via env di `app.config.ts`, jangan hardcode) — belum dikonfigurasi di v1.
+- Lokasi saat dipakai (`expo-location`): izin ditolak → isi manual.
 
 ## Batasan
 
